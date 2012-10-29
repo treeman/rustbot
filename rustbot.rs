@@ -22,6 +22,10 @@ Options:
 ");
 }
 
+struct Irc {
+    sock: @socket::TcpSocketBuf,
+}
+
 fn send_raw(sock: @socket::TcpSocketBuf, txt: ~str) {
     let writer = sock as Writer;
     writer.write_str(txt + "\r\n");
@@ -35,14 +39,33 @@ fn read_line(sock: @socket::TcpSocketBuf) -> ~str {
     let reader = sock as Reader;
     let recv = reader.read_line();
     println(fmt!("< %s", recv));
-    return move recv;
+    return move recv.trim();
+}
+
+fn connect(server: ~str, port: uint, nickname: ~str, username: ~str, realname: ~str) -> ~Irc {
+    let resolution = match ip::get_addr(server, iotask::spawn_iotask(task::task())) {
+        Ok(m) => copy m,
+        Err(_) => {
+            fail ~"Host matching failed";
+        }
+    };
+    let host = resolution.last();
+    let task = iotask::spawn_iotask(task::task());
+
+    let res = socket::connect(move host, port, task);
+
+    let unbuffered = result::unwrap(move res);
+    let sock = @socket::socket_buf(move unbuffered);
+
+    send_raw(sock, ~"NICK " + nickname);
+    send_raw(sock, ~"USER " + username + " 0 * :" + realname);
+
+    ~Irc { sock: sock }
 }
 
 fn main() {
     let mut args = os::args();
     let binary = args.shift();
-
-    if args.is_empty() { usage(binary); return; }
 
     let opts = ~[
         getopts::optflag("h"),
@@ -63,45 +86,19 @@ fn main() {
         return;
     }
 
-    /*
-    io::println("Running irc bot w00");
+    let server = ~"irc.quakenet.org";
+    let port = 6667u;
+    let nickname = ~"rustbot";
+    let username = ~"rustbot";
+    let realname = ~"I'm a bot written in the wonderful rust language, see rust-lang.org!";
 
-    for args.each |s| {
-        io::println(*s);
-    }
-    */
-
-    let resolution = match ip::get_addr("irc.quakenet.org", iotask::spawn_iotask(task::task())) {
-        Ok(m) => copy m,
-        Err(_) => {
-            io::println("Host matching failed");
-            return;
-        }
-    };
-    let host = resolution.last();
-    // println(fmt!("ip host: %?", host));
-
-    // let host = ip::get_addr("irc.quakenet.org", iotask::spawn_iotask(task::task()));
-    // println(fmt!("host: %?", host));
-
-    let task = iotask::spawn_iotask(task::task());
-    // let ip = ip::v4::parse_addr("178.79.132.147");
-    // println(fmt!("ip v4: %?", ip));
-
-    // let res = socket::connect(move ip, 6667u, task);
-    let res = socket::connect(move host, 6667u, task);
-
-    let unbuffered = result::unwrap(move res);
-    let sock = @socket::socket_buf(move unbuffered);
-
-    send_raw(sock, ~"NICK rustbot");
-    send_raw(sock, ~"USER rustbot 0 * :rustbot");
+    let irc = connect(copy server, port, copy nickname, copy username, copy realname);
 
     loop {
-        let recv = read_line(sock);
+        let recv = read_line(irc.sock);
 
-        if recv.starts_with(~"PING") {
-            send_raw(sock, ~"PONG :" + recv.slice(6, recv.len()));
+        if recv.starts_with("PING") {
+            send_raw(irc.sock, ~"PONG :" + recv.slice(6, recv.len()));
         }
     };
 }
