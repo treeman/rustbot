@@ -35,20 +35,25 @@ fn send_raw(sock: @socket::TcpSocketBuf, txt: ~str) {
 }
 
 // Read a single line from socket, block until done
-fn read_line(sock: @socket::TcpSocketBuf) -> ~str {
-    let reader = sock as Reader;
+//fn read_line(sock: @socket::TcpSocketBuf) -> ~str {
+fn read_line(irc: &Irc) -> ~str {
+    let reader = irc.sock as Reader;
     let recv = reader.read_line();
     println(fmt!("< %s", recv));
     return move recv.trim();
 }
 
-fn connect(server: ~str, port: uint, nickname: ~str, username: ~str, realname: ~str) -> ~Irc {
-    let resolution = match ip::get_addr(server, iotask::spawn_iotask(task::task())) {
+fn connect(server: &str, port: uint) -> ~Irc
+{
+    let resolution = match ip::get_addr(server,
+        iotask::spawn_iotask(task::task()))
+    {
         Ok(m) => copy m,
         Err(_) => {
             fail ~"Host matching failed";
         }
     };
+
     let host = resolution.last();
     let task = iotask::spawn_iotask(task::task());
 
@@ -57,10 +62,12 @@ fn connect(server: ~str, port: uint, nickname: ~str, username: ~str, realname: ~
     let unbuffered = result::unwrap(move res);
     let sock = @socket::socket_buf(move unbuffered);
 
-    send_raw(sock, ~"NICK " + nickname);
-    send_raw(sock, ~"USER " + username + " 0 * :" + realname);
-
     ~Irc { sock: sock }
+}
+
+fn identify(irc: &Irc, nickname: &str, username: &str, realname: &str) {
+    send_raw(irc.sock, ~"NICK " + nickname);
+    send_raw(irc.sock, ~"USER " + username + " 0 * :" + realname);
 }
 
 fn main() {
@@ -92,10 +99,12 @@ fn main() {
     let username = ~"rustbot";
     let realname = ~"I'm a bot written in the wonderful rust language, see rust-lang.org!";
 
-    let irc = connect(copy server, port, copy nickname, copy username, copy realname);
+    let irc = connect(server, port);
+
+    identify(irc, nickname, username, realname);
 
     loop {
-        let recv = read_line(irc.sock);
+        let recv = read_line(irc);
 
         if recv.starts_with("PING") {
             send_raw(irc.sock, ~"PONG :" + recv.slice(6, recv.len()));
