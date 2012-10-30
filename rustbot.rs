@@ -35,9 +35,9 @@ fn send_raw(sock: @socket::TcpSocketBuf, txt: ~str) {
 }
 
 // Read a single line from socket, block until done
-//fn read_line(sock: @socket::TcpSocketBuf) -> ~str {
-fn read_line(irc: &Irc) -> ~str {
-    let reader = irc.sock as Reader;
+fn read_line(sock: @socket::TcpSocketBuf) -> ~str {
+// fn read_line(irc: &Irc) -> ~str {
+    let reader = sock as Reader;
     let recv = reader.read_line();
     println(fmt!("< %s", recv));
     return move recv.trim();
@@ -104,7 +104,7 @@ fn main() {
     identify(irc, nickname, username, realname);
 
     loop {
-        let recv = read_line(irc);
+        let recv = read_line(irc.sock);
 
         if recv.starts_with("PING") {
             send_raw(irc.sock, ~"PONG :" + recv.slice(6, recv.len()));
