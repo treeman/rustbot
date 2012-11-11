@@ -22,8 +22,13 @@ struct IrcMsg {
     param: ~str,
 }
 
+struct PrivMsg {
+    channel: ~str,
+    msg: ~str,
+}
+
 // Split a string into components
-pure fn split(s: &str) -> IrcMsg {
+pure fn parse_irc_msg(s: &str) -> IrcMsg {
     let mut space = 0;
     let mut last = 0;
 
@@ -38,7 +43,7 @@ pure fn split(s: &str) -> IrcMsg {
     // Create prefix
     let mut prefix = ~"";
     if space != 0 {
-        prefix = s.substr(1, space - 1);
+        prefix = s.slice(1, space);
         last = space + 1;
     }
 
@@ -48,18 +53,13 @@ pure fn split(s: &str) -> IrcMsg {
         None => 0,
     };
 
-    let code = s.substr(last, space - last);
-    let param = s.substr(space + 1, s.len() - space - 1);
+    let code = s.slice(last, space);
+    let param = s.slice(space + 1, s.len());
 
     IrcMsg { prefix: move prefix, code: move code, param: move param }
 }
 
-struct PrivMsg {
-    channel: ~str,
-    msg: ~str,
-}
-
-pure fn split_msg(s: &str) -> PrivMsg {
+pure fn parse_privmsg(s: &str) -> PrivMsg {
     let space = match find_str(s, " ") {
         Some(i) => i,
         None => 0,
@@ -68,7 +68,7 @@ pure fn split_msg(s: &str) -> PrivMsg {
     // '#channel :msg'
     let channel = s.substr(0, space);
     // Skip :
-    let msg = s.substr(space + 2, s.len() - space - 2);
+    let msg = s.slice(space + 2, s.len());
 
     PrivMsg { channel: move channel, msg: move msg }
 }
@@ -80,14 +80,21 @@ fn main() {
     ];
 
     for tst.each |s| {
-        let m = split(*s);
+        let m = parse_irc_msg(*s);
         println(fmt!("'%s' '%s' '%s'", m.prefix, m.code, m.param));
 
         if m.code == ~"PRIVMSG" {
-            let what = split_msg(m.param);
+            let what = parse_privmsg(m.param);
 
             println(fmt!("msg -> '%s' '%s'", what.channel, what.msg));
         }
+    }
+
+    let s = "asdf asd as a";
+
+    let split = split_char(s.slice(0, s.len()), ' ');
+    for split.each |s| {
+        println(*s);
     }
 }
 
