@@ -1,6 +1,9 @@
+use std::map;
+use std::map::*;
 
 struct Irc {
     sock: @socket::TcpSocketBuf,
+    cmd_cb: @HashMap<~str, @fn(m: &CmdMsg) -> ~str>,
 }
 
 struct IrcMsg {
@@ -12,6 +15,13 @@ struct IrcMsg {
 struct PrivMsg {
     channel: ~str,
     msg: ~str,
+}
+
+struct CmdMsg {
+    channel: ~str,
+    cmd: ~str,
+    args: ~[~str],
+    arg: ~str,
 }
 
 fn send_raw(sock: @socket::TcpSocketBuf, txt: ~str) {
@@ -90,6 +100,46 @@ pure fn parse_privmsg(s: &str) -> ~PrivMsg {
     ~PrivMsg { channel: move channel, msg: move msg }
 }
 
+pure fn is_cmd(m: &PrivMsg) -> bool {
+    m.msg.starts_with(".")
+}
+
+pure fn parse_cmd(m: &PrivMsg) -> ~CmdMsg {
+    let split = split_char(m.msg.slice(1, m.msg.len()), ' ');
+    let cmd: ~str = split.head(); // TODO warn
+    let args = split.tail(); // TODO warn
+    let rest = foldl(~"", args, |a,e| a + *e + " ").trim();
+
+    // TODO copying vectors = bad?
+    ~CmdMsg {
+        channel: m.channel,
+        cmd: cmd,
+        args: args,
+        arg: rest,
+    }
+}
+
+fn parse_received(irc: &Irc, m: &IrcMsg) {
+    match m.code {
+        ~"PRIVMSG" => {
+            let msg = parse_privmsg(m.param);
+
+            if is_cmd(msg) {
+                let cmd = parse_cmd(msg);
+
+                // TODO warnings again
+                if irc.cmd_cb.contains_key(cmd.cmd) {
+                    let a = irc.cmd_cb.get(cmd.cmd)(cmd).trim();
+                    if a != ~"" {
+                        privmsg(irc, cmd.channel, a);
+                    }
+                }
+            }
+        }
+        _ => ()
+    }
+}
+
 fn run(irc: &Irc, f: fn(irc: &Irc, m: &IrcMsg)) {
     loop {
         let recv = read_line(irc.sock);
@@ -101,8 +151,14 @@ fn run(irc: &Irc, f: fn(irc: &Irc, m: &IrcMsg)) {
             let m = parse_irc_msg(recv);
 
             f(irc, m);
+            parse_received(irc, m);
         }
     };
+}
+
+fn register(cmd: ~str, irc: &Irc, f: @fn(m: &CmdMsg) -> ~str)
+{
+    irc.cmd_cb.insert(cmd, f);
 }
 
 fn connect(server: &str, port: uint) -> ~Irc
@@ -124,6 +180,9 @@ fn connect(server: &str, port: uint) -> ~Irc
     let unbuffered = result::unwrap(move res);
     let sock = @socket::socket_buf(move unbuffered);
 
-    ~Irc { sock: sock }
+    ~Irc {
+        sock: sock,
+        cmd_cb: @HashMap::<~str, @fn(m: &CmdMsg) -> ~str>()
+    }
 }
 

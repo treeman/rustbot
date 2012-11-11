@@ -40,43 +40,19 @@ fn handle(irc: &Irc, m: &IrcMsg) {
         ~"JOIN" => {
             privmsg(irc, m.param, "yoyo the mighty rustbot has arrived!");
         }
-        ~"PRIVMSG" => {
-            let msg = parse_privmsg(m.param);
-
-            if msg.msg.starts_with("hello") {
-                privmsg(irc, msg.channel, "hello there mister!");
-            }
-            else if msg.msg.starts_with(".") {
-                let split = split_char(msg.msg.slice(1, msg.msg.len()), ' ');
-                let cmd = split.head();
-                let args = split.tail();
-                let rest = foldl(~"", args, |a,e| a + *e + " ").trim();
-
-                match cmd {
-                    ~"help" => {
-                        privmsg(irc, msg.channel, "no help for ya!");
-                    }
-                    ~"say" => {
-                        if rest != ~"" {
-                            privmsg(irc, msg.channel, rest);
-                        }
-                    }
-                    ~"insult" => {
-                        if rest != ~"" {
-                            privmsg(irc, msg.channel, fmt!("%s thinks rust is iron oxides.", rest));
-                        }
-                    }
-                    ~"compliment" => {
-                        if rest != ~"" {
-                            privmsg(irc, msg.channel, fmt!("%s is friends with rust.", rest));
-                        }
-                    }
-                    _ => (),
-                }
-            }
-        }
         _ => (),
     }
+}
+
+fn register_callbacks(irc: &Irc) {
+    // TODO suppress unused parameter error?
+    register(~"help", irc, |m| ~"Prefix commands with a '.' and try '.cmds'");
+    register(~"about", irc, |m| ~"I'm written in rust as a learning experience, try http://www.rust-lang.org!");
+    register(~"insult", irc, |m| fmt!("%s thinks rust is iron oxide.", m.arg));
+    register(~"compliment", irc, |m| fmt!("%s is best friends with rust.", m.arg));
+    register(~"botsnack", irc, |m| ~":)");
+    register(~"status", irc, |m| ~"Status: 418 I'm a teapot");
+    register(~"src", irc, |m| ~"http://github.com/treeman/rustbot");
 }
 
 fn main() {
@@ -111,6 +87,8 @@ fn main() {
     let irc = connect(server, port);
 
     identify(irc, nickname, username, realname);
+
+    register_callbacks(irc);
 
     run(irc, handle);
 }
