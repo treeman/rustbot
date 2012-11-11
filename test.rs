@@ -13,24 +13,64 @@ use task;
 use uv::iotask;
 use uv::iotask::iotask;
 
+use core::str;
+use core::str::*;
+
 struct IrcMsg {
     prefix: ~str,
-    cmd: ~str,
+    code: ~str,
     param: ~str,
 }
 
-fn split(s: &str) -> IrcMsg {
+// Split a string into components
+pure fn split(s: &str) -> IrcMsg {
+    let mut space = 0;
+    let mut last = 0;
+
+    // If first is ':', find next space
+    if s.starts_with(":") {
+        space = match find_str(s, " ") {
+            Some(i) => i,
+            None => 0,
+        };
+    }
+
+    // Create prefix
     let mut prefix = ~"";
+    if space != 0 {
+        prefix = s.substr(1, space - 1);
+        last = space + 1;
+    }
 
-    /*if s.starts_with(":") {
-        let pos = s.find_char(' ');
-        prefix = s.slice(1, pos);
-    }*/
+    // Find space between cmd and parameters
+    space = match find_str_from(s, " ", last) {
+        Some(i) => i,
+        None => 0,
+    };
 
-    let cmd = ~"123";
-    let param = ~"rest";
+    let code = s.substr(last, space - last);
+    let param = s.substr(space + 1, s.len() - space - 1);
 
-    IrcMsg { prefix: move prefix, cmd: move cmd, param: move param }
+    IrcMsg { prefix: move prefix, code: move code, param: move param }
+}
+
+struct PrivMsg {
+    channel: ~str,
+    msg: ~str,
+}
+
+pure fn split_msg(s: &str) -> PrivMsg {
+    let space = match find_str(s, " ") {
+        Some(i) => i,
+        None => 0,
+    };
+
+    // '#channel :msg'
+    let channel = s.substr(0, space);
+    // Skip :
+    let msg = s.substr(space + 2, s.len() - space - 2);
+
+    PrivMsg { channel: move channel, msg: move msg }
 }
 
 fn main() {
@@ -39,24 +79,15 @@ fn main() {
         ~"PRIVMSG #madeoftree :hello rustbot!",
     ];
 
-    let mut s: ~str = ~"  HaRroRR ";
-    s = s.trim();
-    //let pos = s.find_char('a'); // Fails?!
-    println(fmt!("%u", s.len()));
-    println(s.to_upper());
-
-    s.contains("aR");
-    //find_str(*s, "ro"); // Fails?!
-
-    // Fails?!
-    /*match s.find_char('a') {
-        Some(i) => println(fmt!("at pos %u", i)),
-        None => println("not found"),
-    }*/
-
     for tst.each |s| {
         let m = split(*s);
-        println(fmt!("'%s' '%s' '%s'", m.prefix, m.cmd, m.param));
+        println(fmt!("'%s' '%s' '%s'", m.prefix, m.code, m.param));
+
+        if m.code == ~"PRIVMSG" {
+            let what = split_msg(m.param);
+
+            println(fmt!("msg -> '%s' '%s'", what.channel, what.msg));
+        }
     }
 }
 
