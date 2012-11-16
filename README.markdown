@@ -8,6 +8,7 @@ Implemented commands
 * .help
 * .src
 * .status
+* .nextep (external script)
 
 Command ideas
 -------------
@@ -18,7 +19,6 @@ Command ideas
 * .duke - Duke Nukem quotes!
 * .lithcourse
 * .lithschema
-* .nextep
 * .pokedex
 * .retort - Monkey Island insults + retort with top list!
 * .uptime

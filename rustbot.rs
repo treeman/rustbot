@@ -16,6 +16,9 @@ use uv::iotask::iotask;
 use core::str;
 use core::str::*;
 
+use core::run;
+use core::run::*;
+
 use core::vec;
 use core::vec::*;
 
@@ -31,7 +34,7 @@ Options:
 ");
 }
 
-fn handle(irc: &Irc, m: &IrcMsg) {
+fn handle(irc: @Irc, m: &IrcMsg) {
     match m.code {
         // Hook channel join here. Made sense at the time?
         ~"004" => {
@@ -44,15 +47,36 @@ fn handle(irc: &Irc, m: &IrcMsg) {
     }
 }
 
+fn nextep(m: &CmdMsg) -> ~str {
+    let { status, out, err } = program_output("nextep", [copy m.arg]);
+    if (status == 0) {
+        let res = lines(out);
+
+        // Skip first line
+        if res.len() > 1 {
+            return copy res[1];
+        }
+        else {
+            return copy res[0];
+        }
+    }
+    else {
+        return move err;
+    }
+}
+
 fn register_callbacks(irc: &Irc) {
     // TODO suppress unused parameter error?
-    register(~"help", irc, |m| ~"Prefix commands with a '.' and try '.cmds'");
-    register(~"about", irc, |m| ~"I'm written in rust as a learning experience, try http://www.rust-lang.org!");
-    register(~"insult", irc, |m| fmt!("%s thinks rust is iron oxide.", m.arg));
-    register(~"compliment", irc, |m| fmt!("%s is best friends with rust.", m.arg));
-    register(~"botsnack", irc, |m| ~":)");
-    register(~"status", irc, |m| ~"Status: 418 I'm a teapot");
-    register(~"src", irc, |m| ~"http://github.com/treeman/rustbot");
+    register_bare_cmd(irc, ~"help", || ~"Prefix commands with a '.' and try '.cmds'");
+    register_bare_cmd(irc, ~"about", || ~"I'm written in rust as a learning experience, " +
+        "try http://www.rust-lang.org!");
+    register_bare_cmd(irc, ~"botsnack", || ~":)");
+    register_bare_cmd(irc, ~"status", || ~"Status: 418 I'm a teapot");
+    register_bare_cmd(irc, ~"src", || ~"http://github.com/treeman/rustbot");
+
+    register_cmd(irc, ~"insult", |m| fmt!("%s thinks rust is iron oxide.", m.arg));
+    register_cmd(irc, ~"compliment", |m| fmt!("%s is best friends with rust.", m.arg));
+    register_cmd(irc, ~"nextep", nextep);
 }
 
 fn main() {
@@ -84,7 +108,7 @@ fn main() {
     let username = ~"rustbot";
     let realname = ~"I'm a bot written in the wonderful rust language, see rust-lang.org!";
 
-    let irc = connect(server, port);
+    let mut irc = connect(server, port);
 
     identify(irc, nickname, username, realname);
 

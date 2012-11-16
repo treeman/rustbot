@@ -16,6 +16,9 @@ use uv::iotask::iotask;
 use core::str;
 use core::str::*;
 
+use core::run;
+use core::run::*;
+
 struct IrcMsg {
     prefix: ~str,
     code: ~str,
@@ -74,6 +77,12 @@ pure fn parse_privmsg(s: &str) -> PrivMsg {
 }
 
 fn main() {
+    match program_output("ls", []) {
+        {status, out, err } => println(fmt!("%d %s", status, out)),
+    };
+    let {status, out, err } = program_output("/home/tree/bin/nextep", [~"dexter"]);
+    println(fmt!("%d %s", status, out));
+
     let tst = ~[
         ~":port80b.se.quakenet.org 003 rustbot :This server was created Mon Mar 24 2008 at 23:41:47 CET",
         ~"PRIVMSG #madeoftree :hello rustbot!",
