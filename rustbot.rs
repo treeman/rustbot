@@ -25,6 +25,9 @@ use core::vec::*;
 use irc;
 use irc::*;
 
+use conf;
+use conf::*;
+
 fn usage(binary: &str) {
     io::println(fmt!("Usage: %s [options]\n", binary) +
             "
@@ -48,17 +51,9 @@ fn handle(irc: @Irc, m: &IrcMsg) {
 }
 
 fn nextep(m: &CmdMsg) -> ~str {
-    let { status, out, err } = program_output("nextep", [copy m.arg]);
+    let { status, out, err } = program_output("nextep", [~"--short", copy m.arg]);
     if (status == 0) {
-        let res = lines(out);
-
-        // Skip first line
-        if res.len() > 1 {
-            return copy res[1];
-        }
-        else {
-            return copy res[0];
-        }
+        return move out;
     }
     else {
         return move err;
@@ -102,18 +97,13 @@ fn main() {
         return;
     }
 
-    let server = ~"irc.quakenet.org";
-    let port = 6667u;
-    let nickname = ~"rustbot";
-    let username = ~"rustbot";
-    let realname = ~"I'm a bot written in the wonderful rust language, see rust-lang.org!";
+    let conf = load(~"rustbot.conf");
+    let mut irc = connect(conf);
 
-    let mut irc = connect(server, port);
-
-    identify(irc, nickname, username, realname);
-
+    identify(irc);
     register_callbacks(irc);
 
+    // TODO remove handle from here
     run(irc, handle);
 }
 

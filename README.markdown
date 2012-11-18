@@ -5,17 +5,17 @@ Implemented commands
 
 * .about
 * .botsnack
+* .cmds
 * .help
+* .nextep (external script)
 * .src
 * .status
-* .nextep (external script)
 
 Command ideas
 -------------
 
 * .addinsult %s is dumb
 * .brainfuck - compiler
-* .cmds
 * .duke - Duke Nukem quotes!
 * .lithcourse
 * .lithschema

@@ -1,7 +1,14 @@
 use std::map;
 use std::map::*;
+
 use std::sort;
 use std::sort::*;
+
+use core::io;
+use core::io::*;
+
+//use conf;
+//use conf::*;
 
 struct Irc {
     sock: @socket::TcpSocketBuf,
@@ -9,6 +16,7 @@ struct Irc {
     mut privmsg_cb: ~[@fn(m: &PrivMsg)],
     cmd_cb: @HashMap<~str, @fn(m: &CmdMsg) -> ~str>,
     bare_cmd_cb: @HashMap<~str, @fn() -> ~str>,
+    conf: @Conf,
 }
 
 struct IrcMsg {
@@ -48,9 +56,12 @@ fn read_line(sock: @socket::TcpSocketBuf) -> ~str {
     return move recv.trim();
 }
 
-fn identify(irc: &Irc, nickname: &str, username: &str, realname: &str) {
-    send_raw(irc.sock, ~"NICK " + nickname);
-    send_raw(irc.sock, ~"USER " + username + " 0 * :" + realname);
+fn identify(irc: &Irc) {
+    let nick = get(irc.conf,~"nick").get();
+    let user = get(irc.conf,~"user").get();
+    let desc = get(irc.conf,~"desc").get();
+    send_raw(irc.sock, fmt!("NICK %s", nick));
+    send_raw(irc.sock, fmt!("USER %s * * :%s", user, desc));
 }
 
 fn privmsg(irc: &Irc, channel: &str, msg: &str) {
@@ -246,10 +257,25 @@ fn register_bare_cmd(irc: &Irc, cmd: ~str, f: @fn() -> ~str)
     irc.bare_cmd_cb.insert(cmd, f);
 }
 
-fn connect(server: &str, port: uint) -> @Irc
+fn connect(conf: @Conf) -> @Irc
 {
-    let resolution = match ip::get_addr(server,
-        iotask::spawn_iotask(task::task()))
+    let host = match get(conf, ~"host") {
+        Ok(s) => copy s,
+        Err(_) => {
+            fail ~"Couldn't find 'host' in conf";
+        }
+    };
+    let port = match get_uint(conf, ~"port") {
+        Ok(s) => copy s,
+        Err(_) => {
+            fail ~"Couldn't find 'post' in conf";
+        }
+    };
+
+    // Find host ip
+    let resolution = match ip::get_addr(
+            host,
+            iotask::spawn_iotask(task::task()))
     {
         Ok(m) => copy m,
         Err(_) => {
@@ -257,10 +283,7 @@ fn connect(server: &str, port: uint) -> @Irc
         }
     };
 
-    let host = resolution.last();
-    let task = iotask::spawn_iotask(task::task());
-
-    let res = socket::connect(move host, port, task);
+    let res = socket::connect(resolution.last(), port, iotask::spawn_iotask(task::task()));
 
     let unbuffered = result::unwrap(move res);
     let sock = @socket::socket_buf(move unbuffered);
@@ -271,6 +294,7 @@ fn connect(server: &str, port: uint) -> @Irc
         privmsg_cb: ~[],
         cmd_cb: @HashMap::<~str, @fn(m: &CmdMsg) -> ~str>(),
         bare_cmd_cb: @HashMap::<~str, @fn() -> ~str>(),
+        conf: move conf,
     }
 }
 
