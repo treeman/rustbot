@@ -1,49 +1,39 @@
+About
+=====
+
 An irc bot written in [rust][], for fun and profit!
 
-Implemented commands
---------------------
-
-* .about
-* .botsnack
-* .cmds
-* .help
-* .nextep (external script)
-* .src
-* .status
-
-Command ideas
--------------
-
-* .addinsult %s is dumb
-* .brainfuck - compiler
-* .duke - Duke Nukem quotes!
-* .lithcourse
-* .lithschema
-* .pokedex
-* .retort - Monkey Island insults + retort with top list!
-* .uptime
-* .help [cmd]
+Be aware that rust is fast changing and I may not keep the code up to date.
 
 TODO
-----
+====
 
-* Tests for all stuffs
-* Correct all different warnings
-* Config file with credentials.
-* Plugin extendable
-* `IrcMsg` should parse sender info.
-* Admin handling and priviliged commands.
-* Task handling.
-  Every command should have their own task, so it can fail okay.
-  We need a stdin task so we can control our bot directly.
+* Refactor ugly test code into something actually usable.
+    Factorize to use irc object and messages or something.
+* break messages into codes and commands
+* blacklist trash input
 
-  Problem: sockets are NOT sendable over tasks atm. 
-    Synced queues with a specific socket handler could work?
-* Output cleaning.
-  Don't output PING/PONG and NOTICE and maybe other stuff, unless specified with cmd line flag.
-* System commands, so we can use my existing scripts (i.e. nextep)
-* Help system
-* Figure out how to do random numbers
+Implement some behaviour
+-----------------------
+
+* Easy
+    * .about
+    * .botsnack
+    * .cmds
+    * .help
+    * .nextep (external)
+    * .src
+    * .status
+* Medium
+    * auto op
+    * .uptime
+    * .help [cmd]
+    * .duke - Duke Nukem quotes
+    * .insult - Monkey Island insults!
+    * .lithcourse
+    * .lithschema
+    * latest manga (or something)
+    * habitrpg hooks?
 
 [rust]: http://www.rust-lang.org
 

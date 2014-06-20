@@ -1,109 +1,107 @@
-extern mod std(vers = "0.5");
+#![feature(globs)]
 
 use std::*;
-use getopts::*;
-
-use io::println;
-use io::*;
-
-use ip = net::ip;
-use socket = net::tcp;
-
-use task;
-use uv::iotask;
-use uv::iotask::iotask;
-
-use core::str;
-use core::str::*;
-
-use core::run;
-use core::run::*;
-
-use core::vec;
-use core::vec::*;
-
-use irc;
+use std::io::*;
+use connection::*;
 use irc::*;
 
-use conf;
-use conf::*;
+mod connection;
+mod irc;
 
-fn usage(binary: &str) {
-    io::println(fmt!("Usage: %s [options]\n", binary) +
-            "
-Options:
-
-    -h --help           Show this helpful screen
-");
+// TODO change
+fn identify(stream: &mut LineBufferedWriter<TcpStream>) {
+    write_line(stream, "NICK rustbot");
+    write_line(stream, "USER rustbot 8 * :rustbot");
 }
 
-fn handle(irc: @Irc, m: &IrcMsg) {
-    match m.code {
-        // Hook channel join here. Made sense at the time?
-        ~"004" => {
-            join(irc, "#madeoftree");
+// Read input from stdin.
+fn spawn_stdin_reader(tx: Sender<WriterCommand>) {
+    spawn(proc() {
+        for line in io::stdin().lines() {
+            // FIXME prettier...
+            let s : String = line.unwrap();
+            let x = s.as_slice().trim();
+            println!("stdin: {}", x);
+
+            if x == "quit" {
+                tx.send(Quit);
+                break;
+            }
         }
-        ~"JOIN" => {
-            privmsg(irc, m.param, "yoyo the mighty rustbot has arrived!");
+        println!("Quitting stdin reader");
+    })
+}
+
+// Read input from irc.
+fn spawn_irc_reader(tx: Sender<WriterCommand>, tcp: TcpStream) {
+    spawn(proc() {
+        let mut reader = BufferedReader::new(tcp);
+        loop {
+            match read_line(&mut reader) {
+                Some(x) => {
+                    // FIXME text handling somewhere else
+                    let s = x.as_slice().trim();
+                    if s.starts_with("PING") {
+                        let res = s.slice(6, s.len());
+                        //reader.request_write(format!("PONG :{}", res));
+                        //write_line(&mut reader, format!("PONG :{}", res));
+                        tx.send(Write(format!("PONG :{}", res)));
+                    }
+                }
+                None => break
+            }
         }
-        _ => (),
-    }
+        println!("Quitting irc reader");
+    });
 }
 
-fn nextep(m: &CmdMsg) -> ~str {
-    let { status, out, err } = program_output("nextep", [~"--short", copy m.arg]);
-    if (status == 0) {
-        return move out;
-    }
-    else {
-        return move err;
-    }
+// Write to irc.
+fn spawn_irc_writer(rx: Receiver<WriterCommand>, tcp: TcpStream) {
+    spawn(proc() {
+        let mut stream = LineBufferedWriter::new(tcp.clone());
+        let mut tcp = tcp; // bug workaround
+
+        identify(&mut stream);
+        for x in rx.iter() {
+            match x {
+                Write(s) => write_line(&mut stream, s.as_slice()),
+                Quit => {
+                    write_line(&mut stream, "QUIT :Gone for repairs"); // FIXME printing routine
+                    tcp.close_read();
+                    tcp.close_write();
+                    drop(tcp.clone());
+                    break;
+                },
+            }
+        }
+        println!("Exiting irc writer");
+    });
 }
 
-fn register_callbacks(irc: &Irc) {
-    // TODO suppress unused parameter error?
-    register_bare_cmd(irc, ~"help", || ~"Prefix commands with a '.' and try '.cmds'");
-    register_bare_cmd(irc, ~"about", || ~"I'm written in rust as a learning experience, " +
-        "try http://www.rust-lang.org!");
-    register_bare_cmd(irc, ~"botsnack", || ~":)");
-    register_bare_cmd(irc, ~"status", || ~"Status: 418 I'm a teapot");
-    register_bare_cmd(irc, ~"src", || ~"http://github.com/treeman/rustbot");
+fn spawn_bot() {
+    // FIXME create an Irc object or something.
+    let mut tcp = TcpStream::connect("irc.quakenet.org", 6667).unwrap();
+    let (tx, rx) = channel();
 
-    register_cmd(irc, ~"insult", |m| fmt!("%s thinks rust is iron oxide.", m.arg));
-    register_cmd(irc, ~"compliment", |m| fmt!("%s is best friends with rust.", m.arg));
-    register_cmd(irc, ~"nextep", nextep);
+    spawn_stdin_reader(tx.clone());
+    spawn_irc_reader(tx.clone(), tcp.clone());
+    spawn_irc_writer(rx, tcp);
 }
 
 fn main() {
-    let mut args = os::args();
-    let binary = args.shift();
+    //let mut args = os::args();
+    //let binary = args.shift();
 
-    let opts = ~[
-        getopts::optflag("h"),
-        getopts::optflag("help"),
-    ];
+    //spawn_bot();
 
-    let matches = match getopts(args, opts) {
-        Ok(m) => copy m,
-        Err(f) => {
-            io::println(fmt!("Error: %s\n", getopts::fail_str(copy f)));
-            usage(binary);
-            return;
-        }
+    let conf = IrcConfig {
+        server: "irc.quakenet.org",
+        port: 6667,
+        nick: "rustbot",
+        descr: "https://github.com/treeman/rustbot"
     };
 
-    if opt_present(copy matches, "h") || opt_present(copy matches, "help") {
-        usage(binary);
-        return;
-    }
-
-    let conf = load(~"rustbot.conf");
-    let mut irc = connect(conf);
-
-    identify(irc);
-    register_callbacks(irc);
-
-    // TODO remove handle from here
-    run(irc, handle);
+    let mut irc = Irc::connect(conf);
+    irc.run();
 }
 
