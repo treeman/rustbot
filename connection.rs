@@ -1,26 +1,37 @@
-#![feature(globs)]
-
-use std::*;
 use std::io::*;
 
 // A connection to a server.
-struct ServerConnection {
-    tcp: TcpStream,
-    server: String,
-    port: u16,
+pub struct ServerConnection {
+    pub tcp: TcpStream,
+    pub host: String,
+    pub port: u16,
 }
 
 impl ServerConnection {
     // Will simply fail if we cannot connect.
     // FIXME in the future, return error code.
     // But we need to use multiple servers for that to be useful.
-    pub fn new(server: &str, port: u16) -> ServerConnection {
-        let mut tcp = match TcpStream::connect(server, port) {
+    pub fn new(host: &str, port: u16) -> ServerConnection {
+        let tcp = match TcpStream::connect(host, port) {
             Ok(x) => x,
             Err(e) => { fail!("{}", e); },
         };
-        println!("Connected to {}:{}", server, port);
-        ServerConnection { tcp: tcp, server: server.to_string(), port: port }
+        println!("Connected to {}:{}", host, port);
+        ServerConnection { tcp: tcp, host: host.to_string(), port: port }
+    }
+
+    // Close tcp connection.
+    // Will cause all readers and writers to exit, possibly with safe errors.
+    pub fn close(&mut self) {
+        match self.tcp.close_read() {
+            Err(e) => println!("Error closing read: {}", e),
+            _ => (),
+        };
+        match self.tcp.close_write() {
+            Err(e) => println!("Error closing write: {}", e),
+            _ => (),
+        };
+        drop(self.tcp.clone());
     }
 }
 
@@ -47,31 +58,6 @@ pub fn read_line(stream: &mut BufferedReader<TcpStream>) -> Option<String> {
             println!("error reading from stream: {}", x);
             None
         }
-    }
-}
-
-// Commands for writer
-pub enum WriterCommand {
-    Write(String),
-    Quit
-}
-
-pub struct TxWriter {
-    tx: Sender<WriterCommand>,
-}
-
-impl TxWriter {
-    pub fn new(tx: &Sender<WriterCommand>) -> TxWriter {
-        TxWriter{ tx: tx.clone() }
-    }
-
-    pub fn write(&self, s: String) {
-        self.tx.send(Write(s));
-    }
-
-    // Use for closing down
-    pub fn send_quit(&self) {
-        self.tx.send(Quit);
     }
 }
 
