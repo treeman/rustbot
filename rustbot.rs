@@ -58,15 +58,16 @@ fn main() {
 
     let channels = vec!["#treecraft"];
 
+    // FIXME better interface? Or jus keep?
     let mut irc = Irc::connect(conf);
     irc.register_code_cb("004",
         |_: &IrcMsg, writer: &IrcWriter| {
             for chan in channels.iter() {
                 writer.join(*chan);
-                println!("Joining {}", chan);
             }
         });
 
+    // FIXME make this work (need a writer!)
     //spawn_stdin_reader(irc.writer());
     irc.run();
 }
