@@ -1,4 +1,4 @@
-use connection::*;
+use irc::connection::*;
 
 // Convenience wrapper to abstract away write commands.
 pub struct IrcWriter {
@@ -23,7 +23,7 @@ impl IrcWriter {
     }
 
     // Change nickname.
-    pub fn nick(&self, s: String) {
+    pub fn nick(&self, s: &str) {
         self.write_line(format!("NICK {}", s));
     }
 
@@ -33,7 +33,7 @@ impl IrcWriter {
     }
 
     // Use for closing down.
-    pub fn quit(&self, s: String) {
+    pub fn quit(&self, s: &str) {
         self.tx.send(Output(format!("QUIT :{}", s)));
         self.tx.send(Quit);
     }

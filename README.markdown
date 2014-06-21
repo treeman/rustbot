@@ -8,11 +8,10 @@ Be aware that rust is fast changing and I may not keep the code up to date.
 TODO
 ====
 
-* Break messages into commands
-* Add more callback types
-* Refactor ping + join into callbacks
-* Refactor into irc directory
-* Split structs into different files
+* Add privmsg callback
+* Add command callback
+* Refactor join callback
+* Merge IrcWriter to include irc info/config (want channels for better join hook)
 * Readd tests of parsing
 
 Implement some behaviour

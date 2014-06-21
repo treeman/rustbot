@@ -11,11 +11,11 @@ extern crate core;
 
 use std::*;
 use std::io::*;
-use irc::*;
-use writer::*;
 
-mod connection;
-mod writer;
+use irc::*;
+use irc::msg::*;
+use irc::config::*;
+use irc::writer::*;
 mod irc;
 
 // Read input from stdin.
@@ -29,7 +29,7 @@ fn spawn_stdin_reader(writer: IrcWriter) {
             println!("stdin: {}", x);
 
             if x == ".quit" {
-                writer.quit("Gone for repairs".to_string());
+                writer.quit("Gone for repairs");
                 break;
             }
 
@@ -45,7 +45,6 @@ fn main() {
     let conf = IrcConfig {
         host: "irc.quakenet.org",
         port: 6667,
-        channels: vec!["#treecraft"],
         nick: "rustbot",
         descr: "https://github.com/treeman/rustbot",
         blacklist: vec![
@@ -57,7 +56,17 @@ fn main() {
         ],
     };
 
+    let channels = vec!["#treecraft"];
+
     let mut irc = Irc::connect(conf);
+    irc.register_code_cb("004",
+        |_: &IrcMsg, writer: &IrcWriter| {
+            for chan in channels.iter() {
+                writer.join(*chan);
+                println!("Joining {}", chan);
+            }
+        });
+
     //spawn_stdin_reader(irc.writer());
     irc.run();
 }

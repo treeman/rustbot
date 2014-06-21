@@ -1,52 +1,17 @@
 use std::io::*;
-use connection::*;
-use writer::*;
 use regex::*;
-use core::fmt::{Show, Formatter, Result};
 use std::collections::hashmap::HashSet;
+use std::collections::hashmap::HashMap;
 
-// Single server for now.
-pub struct IrcConfig<'a> {
-    pub host: &'a str,
-    pub port: u16,
-    pub channels: Vec<&'a str>,
-    pub nick: &'a str,
-    pub descr: &'a str,
-    pub blacklist: Vec<&'a str>,
-}
+use irc::config::*;
+use irc::connection::*;
+use irc::msg::*;
+use irc::writer::*;
 
-// A regular irc message sent from the server.
-struct IrcMsg {
-    orig: String,
-    prefix: String,
-    code: String,
-    param: String,
-}
-
-impl IrcMsg {
-    fn new(s: &str) -> Option<IrcMsg> {
-        let re = regex!(r"^(:\S+)?\s*(\S+)\s+(.*)\r?$");
-        let caps = re.captures(s);
-        match caps {
-            Some(x) => {
-                Some(IrcMsg {
-                    orig: s.to_string(),
-                    prefix: x.at(1).to_string(),
-                    code: x.at(2).to_string(),
-                    param: x.at(3).to_string(),
-                })
-            },
-            None => None
-        }
-    }
-}
-
-impl Show for IrcMsg {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "prefix: {} code: {} param: {}",
-               self.prefix, self.code, self.param)
-    }
-}
+pub mod config;
+pub mod connection;
+pub mod msg;
+pub mod writer;
 
 // command callbacks?
 // + register functionsto send to irc.
@@ -60,21 +25,23 @@ pub struct Irc<'a> {
     // Bot info.
     nick: &'a str,
     descr: &'a str,
-    channels: Vec<&'a str>,
 
     // General config
     //blacklist: Vec<&'a str>,
     blacklist: HashSet<String>, // String to avoid lifetime issues :)
 
     // Callbacks at received events
-    raw_cb: Vec<|s: &str|:'a -> Option<String>>,
+    raw_cb: Vec<|s: &str|:'a -> Option<String>>, // FIXME don't return a string?
+    // FIXME merge IrcWriter and Irc info. -> IrcHandler?
+    // This is a workaround for a multimap.
+    code_cb: HashMap<String, Vec<|msg: &IrcMsg, writer: &IrcWriter|:'a>>,
 }
 
+// FIXME move?
 // Simple wrapper on top of regex replace matching.
 // Used for the option type.
 fn raw_replace(s: &str, re: Regex, res: &str) -> Option<String> {
-    if re.is_match(s) {
-        //println!("Matched {} with {}", s, re);
+    if re.is_match(s) { // FIXME double matching!
         Some(re.replace(s, res))
     }
     else {
@@ -83,9 +50,9 @@ fn raw_replace(s: &str, re: Regex, res: &str) -> Option<String> {
 }
 
 // FIXME move?
-fn ping(s: &str) -> Option<String> {
-    raw_replace(s, regex!(r"^PING\s(.+)$"), "PONG $1")
-}
+//fn ping(s: &str) -> Option<String> {
+    //raw_replace(s, regex!(r"^PING\s(.+)$"), "PONG $1")
+//}
 
 impl<'a> Irc<'a> {
     // Create a new irc instance and connect to the server, but don't act on it.
@@ -101,16 +68,34 @@ impl<'a> Irc<'a> {
             //rx: rx,
             nick: conf.nick,
             descr: conf.descr,
-            channels: conf.channels,
 
             blacklist: blacklist,
 
             raw_cb: Vec::new(),
+            code_cb: HashMap::new(),
         };
 
-        irc.raw_cb.push(ping);
-
+        irc.register_callbacks();
         irc
+    }
+
+    pub fn register_code_cb(&mut self, code: &str,
+                            cb: |msg: &IrcMsg, writer: &IrcWriter|:'a)
+    {
+        //self.code_cb.insert(code.to_string(), cb);
+        let c = code.to_string();
+        if !self.code_cb.contains_key(&c) {
+            self.code_cb.insert(c.clone(), Vec::new());
+        }
+        let cbs = self.code_cb.get_mut(&c);
+        cbs.push(cb);
+    }
+
+    fn register_callbacks(&mut self) {
+        //self.raw_cb.push(ping);
+        self.register_code_cb("PING", |msg: &IrcMsg, writer: &IrcWriter| {
+            writer.write_line(format!("PONG {}", msg.param));
+        });
     }
 
     // Construct a writer we can use to send things to irc.
@@ -127,12 +112,17 @@ impl<'a> Irc<'a> {
             println!("< {}", msg.orig);
         }
 
-        // Join when we receive 004 because it's often there (or something)
-        if code.as_slice() == "004" {
-            for chan in self.channels.iter() {
-                writer.join(*chan);
+        // Irc msg callbacks
+        let c = msg.code.clone();
+        if self.code_cb.contains_key(&c) {
+            let cbs = self.code_cb.get_mut(&c);
+            for cb in cbs.mut_iter() {
+                (*cb)(msg, writer);
             }
         }
+
+        // FIXME callbacks for privmsg
+        // FIXME look for commands
     }
 
     // Called when we receive a response from the server.
@@ -232,6 +222,7 @@ impl<'a> Irc<'a> {
     //args: String,
 //}
 
+#[cfg(test)]
 mod tests {
     // Test irc message matching
     #[test]
@@ -252,7 +243,6 @@ mod tests {
     //}
 
     // IRC message parsing test functions
-    #[cfg(test)]
     fn some_msg(s: &str, prefix: &str, code: &str, param: &str) {
         match super::IrcMsg::new(s) {
             Some(x) => {
@@ -264,7 +254,6 @@ mod tests {
         }
     }
 
-    #[cfg(test)]
     fn none_msg(s: &str) {
         match super::IrcMsg::new(s) {
             Some(_) => fail!("Matched {}, s"),
@@ -273,7 +262,6 @@ mod tests {
     }
 
     // Raw callback test functions
-    #[cfg(test)]
     fn test_cb_match(f: |String| -> Option<String>, s: &str, expected: &str) {
         match f(s.to_string()) {
             Some(got) => assert_eq!(got, expected.to_string()),
@@ -281,7 +269,6 @@ mod tests {
         }
     }
 
-    #[cfg(test)]
     fn test_cb_none(f: |String| -> Option<String>, s: &str) {
         match f(s.to_string()) {
             Some(_) => fail!("Some"),
