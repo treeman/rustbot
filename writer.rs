@@ -1,18 +1,13 @@
-// Commands for the irc process.
-// Quit is needed as a special case to close down the program.
-pub enum IrcCommand {
-    Output(String),
-    Quit,
-}
+use connection::*;
 
 // Convenience wrapper to abstract away write commands.
 pub struct IrcWriter {
-    tx: Sender<IrcCommand>,
+    tx: Sender<ConnectionEvent>,
 }
 
 impl IrcWriter {
     // Wrapping a tx channel.
-    pub fn new(tx: Sender<IrcCommand>) -> IrcWriter {
+    pub fn new(tx: Sender<ConnectionEvent>) -> IrcWriter {
         IrcWriter{ tx: tx.clone() }
     }
 

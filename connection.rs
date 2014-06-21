@@ -1,5 +1,13 @@
 use std::io::*;
 
+// Events will be handled by main irc handler.
+// Quit is needed as a special case to close down the program.
+pub enum ConnectionEvent {
+    Output(String),
+    Received(String),
+    Quit,
+}
+
 // A connection to a server.
 pub struct ServerConnection {
     pub tcp: TcpStream,
@@ -38,7 +46,6 @@ impl ServerConnection {
 
 // Primitive write from tcp buffer.
 pub fn write_line(stream: &mut LineBufferedWriter<TcpStream>, s: &str) {
-    println!("> {}", s);
     match stream.write_line(s) {
         Err(e) => {
             println!("Error: {}", e);
@@ -51,7 +58,6 @@ pub fn write_line(stream: &mut LineBufferedWriter<TcpStream>, s: &str) {
 pub fn read_line(stream: &mut BufferedReader<TcpStream>) -> Option<String> {
     match stream.read_line() {
         Ok(x) => {
-            print!("< {}", x);
             Some(x)
         },
         Err(x) => {

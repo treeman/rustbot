@@ -1,5 +1,11 @@
 #![feature(globs)]
 
+// For regex usage
+#![feature(phase)]
+#[phase(plugin)]
+extern crate regex_macros;
+extern crate regex;
+
 use std::*;
 use std::io::*;
 use irc::*;
