@@ -8,16 +8,16 @@ pub struct IrcWriter {
 impl IrcWriter {
     // Wrapping a tx channel.
     pub fn new(tx: Sender<ConnectionEvent>) -> IrcWriter {
-        IrcWriter{ tx: tx.clone() }
+        IrcWriter { tx: tx.clone() }
     }
 
     // Join a channel.
-    pub fn join(&self, chan: &String) {
+    pub fn join(&self, chan: &str) {
         self.write_line(format!("JOIN {}", chan));
     }
 
     // Identify us to the server.
-    pub fn identify(&self, nick: &String, descr: &String) {
+    pub fn identify(&self, nick: &str, descr: &str) {
         self.write_line(format!("NICK {}", nick));
         self.write_line(format!("USER {} 8 * :{}", nick, descr));
     }
@@ -33,7 +33,7 @@ impl IrcWriter {
     }
 
     // Use for closing down.
-    pub fn send_quit(&self, s: String) {
+    pub fn quit(&self, s: String) {
         self.tx.send(Output(format!("QUIT :{}", s)));
         self.tx.send(Quit);
     }

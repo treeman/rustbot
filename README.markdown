@@ -8,10 +8,12 @@ Be aware that rust is fast changing and I may not keep the code up to date.
 TODO
 ====
 
-* Refactor ugly test code into something actually usable.
-    Factorize to use irc object and messages or something.
-* break messages into codes and commands
-* blacklist trash input
+* Break messages into commands
+* Add more callback types
+* Refactor ping + join into callbacks
+* Refactor into irc directory
+* Split structs into different files
+* Readd tests of parsing
 
 Implement some behaviour
 -----------------------

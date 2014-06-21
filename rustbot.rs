@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 #![feature(globs)]
 
 // For regex usage
@@ -5,6 +6,8 @@
 #[phase(plugin)]
 extern crate regex_macros;
 extern crate regex;
+
+extern crate core;
 
 use std::*;
 use std::io::*;
@@ -26,7 +29,7 @@ fn spawn_stdin_reader(writer: IrcWriter) {
             println!("stdin: {}", x);
 
             if x == ".quit" {
-                writer.send_quit("Gone for repairs".to_string());
+                writer.quit("Gone for repairs".to_string());
                 break;
             }
 
@@ -44,11 +47,18 @@ fn main() {
         port: 6667,
         channels: vec!["#treecraft"],
         nick: "rustbot",
-        descr: "https://github.com/treeman/rustbot"
+        descr: "https://github.com/treeman/rustbot",
+        blacklist: vec![
+            "001", "002", "003", "004", "005",  // greetings etc
+            "005",                              // supported things
+            "251", "252", "253", "254", "255",  // server status, num connections etc
+            "372", "375", "376",                // MOTD
+            "NOTICE",                           // crap?
+        ],
     };
 
     let mut irc = Irc::connect(conf);
-    spawn_stdin_reader(irc.writer());
+    //spawn_stdin_reader(irc.writer());
     irc.run();
 }
 
