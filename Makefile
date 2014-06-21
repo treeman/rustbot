@@ -1,7 +1,7 @@
 all: rustbot
 
 rustbot:
-	rustc src/rustbot.rs -o rustbot
+	rustc rustbot.rs -o rustbot
 
 clean:
 	rm rustbot rustbot-test -f
@@ -9,5 +9,5 @@ clean:
 remake: clean rustbot
 
 test:
-	rustc src/rustbot.rs --test -o rustbot-test
+	rustc rustbot.rs --test -o rustbot-test
 	./rustbot-test

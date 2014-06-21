@@ -1,3 +1,0 @@
-#[crate_type = "bin"]
-mod irc;
-mod conf;
