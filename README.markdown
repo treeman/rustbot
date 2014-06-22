@@ -36,5 +36,5 @@ Implement some behaviour
     * habitrpg hooks?
 
 [rust]: http://www.rust-lang.org "rust"
-[rfx2812]: http://tools.ietf.org/html/rfc2812 "irc reference"
+[rfc2812]: http://tools.ietf.org/html/rfc2812 "irc reference"
 
