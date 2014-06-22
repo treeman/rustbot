@@ -19,11 +19,6 @@ pub struct Irc<'a> {
     // Connections to irc server and over internal channel.
     conn: ServerConnection,
 
-    // FIXME Need to store tx/rx somehow if we want to be able to expose
-    // writer (I think?)
-    //tx: Sender<ConnectionEvent>,
-    //rx: Receiver<ConnectionEvent>,
-
     // General config
     info: BotInfo<'a>,
     blacklist: HashSet<String>, // String to avoid lifetime issues :)
@@ -33,6 +28,11 @@ pub struct Irc<'a> {
 
     // This is a workaround for a multimap.
     code_cb: HashMap<String, Vec<|msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo|:'a>>,
+
+    // We can register external functions to be spawned during runtime.
+    // Workaround as I couldn't get Irc to hold a valid tx we can return.
+    // The problem is what to do with the rx.
+    spawn_funcs: Vec<fn(tx: Sender<ConnectionEvent>)>,
 }
 
 impl<'a> Irc<'a> {
@@ -46,16 +46,16 @@ impl<'a> Irc<'a> {
 
         let mut irc = Irc {
             conn: ServerConnection::new(conf.host, conf.port),
-            //tx: tx,
-            //rx: rx,
+
             info: BotInfo::new(&conf),
             blacklist: blacklist,
 
             raw_cb: Vec::new(),
             code_cb: HashMap::new(),
+            spawn_funcs: Vec::new(),
         };
 
-        irc.register_default_callbacks();
+        irc.init_callbacks();
         irc
     }
 
@@ -71,7 +71,7 @@ impl<'a> Irc<'a> {
         cbs.push(cb);
     }
 
-    fn register_default_callbacks(&mut self) {
+    fn init_callbacks(&mut self) {
         self.register_code_cb("PING", |msg: &IrcMsg, writer: &IrcWriter, _| {
             writer.write_line(format!("PONG {}", msg.param));
         });
@@ -83,12 +83,6 @@ impl<'a> Irc<'a> {
             }
         });
     }
-
-    // Construct a writer we can use to send things to irc.
-    // Uses a channel transmitter with a process in the backround.
-    //pub fn writer(&self) -> IrcWriter {
-        //IrcWriter::new(self.tx.clone())
-    //}
 
     // Called when we have a properly formatted irc message.
     fn handle_msg(&mut self, msg: &IrcMsg, writer: &IrcWriter) {
@@ -141,8 +135,25 @@ impl<'a> Irc<'a> {
     // Run irc client and block until done.
     pub fn run(&mut self) {
         let (tx, rx) = channel();
+
+        // Spawn reader which reads from our tcp.
         self.spawn_reader(tx.clone());
+
+        // Spawn registered functions with a tx.
+        for f in self.spawn_funcs.mut_iter() {
+            let fun = *f; // Owner workaround, &fn isn't sendable but fn is.
+            let tx = tx.clone(); // Create a tx for proc to own.
+            spawn(proc() {
+                fun(tx);
+            });
+        }
         self.run_handler(tx.clone(), rx);
+    }
+
+    // Expose internal tx channel through these callbacks.
+    // Workaround as I couldn't make irc hold tx (and the problematic rx).
+    pub fn register_tx_proc(&mut self, f: fn(tx: Sender<ConnectionEvent>)) {
+        self.spawn_funcs.push(f);
     }
 
     // Spawn a proc reader which listens to incoming messages from irc.
@@ -163,7 +174,8 @@ impl<'a> Irc<'a> {
 
     // Run event handler. Will block.
     fn run_handler(&mut self, tx: Sender<ConnectionEvent>, rx: Receiver<ConnectionEvent>) {
-        println!("Spawning event handler");
+        println!("Running event handler");
+
         let tcp = self.conn.tcp.clone();
         let mut stream = LineBufferedWriter::new(tcp.clone());
         let writer = IrcWriter::new(tx);
@@ -209,56 +221,7 @@ impl<'a> Irc<'a> {
 
 #[cfg(test)]
 mod tests {
-    // Test irc message matching
-    #[test]
-    fn msg() {
-        some_msg(":pref 020 rustbot lblblb", ":pref", "020", "rustbot lblblb");
-        some_msg("020 rustbot lblblb", "", "020", "rustbot lblblb");
-        some_msg(":dreamhack.se.quakenet.org 376 rustbot :End of /MOTD command",
-                 ":dreamhack.se.quakenet.org", "376", "rustbot :End of /MOTD command");
-        none_msg("a");
-    }
-
-    // FIXME correct tests
-    // Test callbacks
-    //#[test]
-    //fn ping() {
-        //test_cb_match(super::ping, "PING :423131321", "PONG :423131321");
-        //test_cb_none(super::ping, "JOIN :asdf");
-    //}
-
-    // IRC message parsing test functions
-    fn some_msg(s: &str, prefix: &str, code: &str, param: &str) {
-        match super::IrcMsg::new(s) {
-            Some(x) => {
-                assert_eq!(x.prefix, prefix.to_string());
-                assert_eq!(x.code, code.to_string());
-                assert_eq!(x.param, param.to_string());
-            },
-            None => fail!("Did not match {}", s),
-        }
-    }
-
-    fn none_msg(s: &str) {
-        match super::IrcMsg::new(s) {
-            Some(_) => fail!("Matched {}, s"),
-            None => (),
-        }
-    }
-
-    // Raw callback test functions
-    fn test_cb_match(f: |String| -> Option<String>, s: &str, expected: &str) {
-        match f(s.to_string()) {
-            Some(got) => assert_eq!(got, expected.to_string()),
-            None => fail!("None"),
-        }
-    }
-
-    fn test_cb_none(f: |String| -> Option<String>, s: &str) {
-        match f(s.to_string()) {
-            Some(_) => fail!("Some"),
-            None => (),
-        }
-    }
+    // FIXME how to test callbacks?
+    // Hook into rx/tx?
 }
 

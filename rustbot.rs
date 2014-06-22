@@ -13,28 +13,29 @@ use std::*;
 use std::io::*;
 
 use irc::*;
-use irc::config::*;
-use irc::writer::*;
+use irc::connection::ConnectionEvent;
+use irc::config::IrcConfig;
+use irc::writer::IrcWriter;
 mod irc;
 
 // Read input from stdin.
-fn spawn_stdin_reader(writer: IrcWriter) {
+fn stdin_reader(tx: Sender<ConnectionEvent>) {
+    let writer = IrcWriter::new(tx);
+
     println!("Spawning stdin reader");
-    spawn(proc() {
-        for line in io::stdin().lines() {
-            // FIXME prettier...
-            let s : String = line.unwrap();
-            let x = s.as_slice().trim();
-            println!("stdin: {}", x);
+    for line in io::stdin().lines() {
+        // FIXME prettier...
+        let s : String = line.unwrap();
+        let x = s.as_slice().trim();
+        println!("stdin: {}", x);
 
-            if x == ".quit" {
-                writer.quit("Gone for repairs");
-                break;
-            }
-
+        if x == ".quit" {
+            writer.quit("Gone for repairs");
+            break;
         }
-        println!("Quitting stdin reader");
-    })
+
+    }
+    println!("Quitting stdin reader");
 }
 
 fn main() {
@@ -58,8 +59,9 @@ fn main() {
 
     let mut irc = Irc::connect(conf);
 
-    // FIXME make this work (need a writer!)
-    //spawn_stdin_reader(irc.writer());
+    // Directly hook into internal channel.
+    irc.register_tx_proc(stdin_reader);
+
     irc.run();
 }
 

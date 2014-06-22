@@ -32,3 +32,35 @@ impl<'a> Show for IrcMsg<'a> {
                self.prefix, self.code, self.param)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    // Test irc message matching
+    #[test]
+    fn msg() {
+        some_msg(":pref 020 rustbot lblblb", ":pref", "020", "rustbot lblblb");
+        some_msg("020 rustbot lblblb", "", "020", "rustbot lblblb");
+        some_msg(":dreamhack.se.quakenet.org 376 rustbot :End of /MOTD command",
+                 ":dreamhack.se.quakenet.org", "376", "rustbot :End of /MOTD command");
+        none_msg("a");
+    }
+
+    fn some_msg(s: &str, prefix: &str, code: &str, param: &str) {
+        match super::IrcMsg::new(s) {
+            Some(x) => {
+                assert_eq!(x.prefix, prefix.to_string());
+                assert_eq!(x.code, code.to_string());
+                assert_eq!(x.param, param.to_string());
+            },
+            None => fail!("Did not match {}", s),
+        }
+    }
+
+    fn none_msg(s: &str) {
+        match super::IrcMsg::new(s) {
+            Some(_) => fail!("Matched {}, s"),
+            None => (),
+        }
+    }
+}
+
