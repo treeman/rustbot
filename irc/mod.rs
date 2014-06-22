@@ -23,20 +23,23 @@ pub struct Irc<'a> {
     // Connections to irc server and over internal channel.
     conn: ServerConnection,
 
-    // General config
+    // General config.
     info: BotInfo<'a>,
     // String to avoid lifetime issues :)
     in_blacklist: HashSet<String>,
     out_blacklist: Vec<Regex>,
 
-    // Callbacks at received events
+    // Callbacks at received events.
     raw_cb: Vec<|&str, &IrcWriter, &BotInfo|:'a>,
 
     // This is a workaround for a multimap.
     code_cb: HashMap<String, Vec<|&IrcMsg, &IrcWriter, &BotInfo|:'a>>,
 
-    // Callbacks for PRIVMSG
+    // Callbacks for PRIVMSG.
     privmsg_cb: Vec<|&IrcPrivMsg, &IrcWriter, &BotInfo|:'a>,
+
+    // Command callbacks. Multimap.
+    cmd_cb: HashMap<String, Vec<|&IrcCommand, &IrcWriter, &BotInfo|:'a>>,
 
     // We can register external functions to be spawned during runtime.
     // Workaround as I couldn't get Irc to hold a valid tx we can return.
@@ -64,11 +67,24 @@ impl<'a> Irc<'a> {
             raw_cb: Vec::new(),
             code_cb: HashMap::new(),
             privmsg_cb: Vec::new(),
+            cmd_cb: HashMap::new(),
             spawn_funcs: Vec::new(),
         };
 
         irc.init_callbacks();
         irc
+    }
+
+    // Register a callback for a specific command.
+    pub fn register_cmd_cb(&mut self, cmd: &str,
+                           cb: |&IrcCommand, &IrcWriter, &BotInfo|:'a)
+    {
+        let c = cmd.to_string();
+        if !self.cmd_cb.contains_key(&c) {
+            self.cmd_cb.insert(c.clone(), Vec::new());
+        }
+        let cbs = self.cmd_cb.get_mut(&c);
+        cbs.push(cb);
     }
 
     // Register a callback for a specific irc msg code.
@@ -109,6 +125,18 @@ impl<'a> Irc<'a> {
         }
     }
 
+    // Called when we receive a command from irc.
+    fn handle_cmd(&mut self, cmd: &IrcCommand, writer: &IrcWriter) {
+        // Irc cmd callbacks.
+        let c = cmd.name.to_string();
+        if self.cmd_cb.contains_key(&c) {
+            let cbs = self.cmd_cb.get_mut(&c);
+            for cb in cbs.mut_iter() {
+                (*cb)(cmd, writer, &self.info);
+            }
+        }
+    }
+
     // Called when we have a properly formatted irc message.
     fn handle_msg(&mut self, msg: &IrcMsg, writer: &IrcWriter) {
         // Print received message if it's not blacklisted.
@@ -117,7 +145,7 @@ impl<'a> Irc<'a> {
             println!("< {}", msg.orig);
         }
 
-        // Irc msg callbacks
+        // Irc msg callbacks.
         let c = msg.code.clone();
         if self.code_cb.contains_key(&c) {
             let cbs = self.code_cb.get_mut(&c);
@@ -126,9 +154,15 @@ impl<'a> Irc<'a> {
             }
         }
 
+        // Should be able to avoid nesting like this.
         match IrcPrivMsg::new(msg) {
             Some(msg) => {
                 self.handle_priv_msg(&msg, writer);
+
+                match IrcCommand::new(&msg, self.info.cmd_prefix) {
+                    Some(cmd) => self.handle_cmd(&cmd, writer),
+                    _ => (),
+                }
             },
             _ => (),
         }

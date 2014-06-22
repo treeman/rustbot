@@ -9,20 +9,20 @@ pub struct IrcPrivMsg {
     pub sender_nick: String,
     pub sender_info: String,
     pub channel: String,
-    pub msg: String,
+    pub txt: String,
 }
 
 impl IrcPrivMsg {
-    pub fn new(irc_msg: &IrcMsg) -> Option<IrcPrivMsg> {
-        if irc_msg.code.as_slice() == "PRIVMSG" {
-            match (match_sender(irc_msg), match_message(irc_msg)) {
-                (Some((nick, info)), Some((channel, msg))) =>
+    pub fn new(msg: &IrcMsg) -> Option<IrcPrivMsg> {
+        if msg.code.as_slice() == "PRIVMSG" {
+            match (match_sender(msg), match_message(msg)) {
+                (Some((nick, info)), Some((channel, txt))) =>
                     Some(IrcPrivMsg {
-                        orig: irc_msg.orig.clone(),
+                        orig: msg.orig.clone(),
                         sender_nick: nick,
                         sender_info: info,
                         channel: channel,
-                        msg: msg,
+                        txt: txt,
                     }),
                 _ => None,
             }
@@ -36,7 +36,7 @@ impl IrcPrivMsg {
 impl Show for IrcPrivMsg {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "sender: {} ({}) channel: {} msg: {}",
-               self.sender_nick, self.sender_info, self.channel, self.msg)
+               self.sender_nick, self.sender_info, self.channel, self.txt)
     }
 }
 

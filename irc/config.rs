@@ -9,5 +9,6 @@ pub struct IrcConfig<'a> {
     pub channels: Vec<&'a str>,
     pub in_blacklist: Vec<&'a str>,
     pub out_blacklist: Vec<Regex>,
+    pub cmd_prefix: char,
 }
 

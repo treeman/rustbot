@@ -8,27 +8,24 @@ Be aware that rust is fast changing and I may not keep the code up to date.
 TODO
 ====
 
-* Add a command struct
-* Add command callback
 * Decide on writer interface (&str vs String vs &String...)
+* Logging
+* Auto-op in our channel
 
 Implement some behaviour
 -----------------------
 
 * Easy
-    * .about
-    * .botsnack
-    * .cmds
     * .help
     * .nextep (external)
-    * .src
-    * .status
 * Medium
+    * .cmds
     * auto op
     * .uptime
-    * .help [cmd]
     * .duke - Duke Nukem quotes
     * .insult - Monkey Island insults!
+* Harder
+    * .help [cmd]
     * .lithcourse
     * .lithschema
     * latest manga (or something)

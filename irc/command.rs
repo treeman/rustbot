@@ -6,14 +6,25 @@ use irc::privmsg::*;
 pub struct IrcCommand<'a> {
     pub name: &'a str,
     pub args: Vec<&'a str>,
-    pub msg: &'a IrcPrivMsg,
+    //pub msg: &'a IrcPrivMsg,
+    pub channel: &'a str,
 }
 
 // TODO something like this?
 impl<'a> IrcCommand<'a> {
-    //pub fn new(msg: &IrcPrivMsg) -> Option<IrcCommand<'a>> {
-
-    //}
+    pub fn new(msg: &'a IrcPrivMsg, key: char) -> Option<IrcCommand<'a>> {
+        match Command::new(msg.txt.as_slice(), key) {
+            Some(cmd) => {
+                Some(IrcCommand {
+                    name: cmd.name,
+                    args: cmd.args,
+                    //msg: msg,
+                    channel: msg.channel.as_slice(),
+                })
+            },
+            None => None,
+        }
+    }
 }
 
 // An actual command.
