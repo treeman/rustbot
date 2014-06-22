@@ -1,58 +1,39 @@
 use std::io::*;
-use regex::*;
+//use regex::*;
 use std::collections::hashmap::HashSet;
 use std::collections::hashmap::HashMap;
 
 use irc::config::*;
 use irc::connection::*;
-use irc::msg::*;
+use irc::msg::IrcMsg;
 use irc::writer::*;
+use irc::info::BotInfo;
 
 pub mod config;
 pub mod connection;
 pub mod msg;
 pub mod writer;
+mod info;
 
-// command callbacks?
-// + register functionsto send to irc.
 pub struct Irc<'a> {
     // Connections to irc server and over internal channel.
     conn: ServerConnection,
-    // Cannot make this work.
+
+    // FIXME Need to store tx/rx somehow if we want to be able to expose
+    // writer (I think?)
     //tx: Sender<ConnectionEvent>,
     //rx: Receiver<ConnectionEvent>,
 
-    // Bot info.
-    nick: &'a str,
-    descr: &'a str,
-
     // General config
-    //blacklist: Vec<&'a str>,
+    info: BotInfo<'a>,
     blacklist: HashSet<String>, // String to avoid lifetime issues :)
 
     // Callbacks at received events
-    raw_cb: Vec<|s: &str|:'a -> Option<String>>, // FIXME don't return a string?
-    // FIXME merge IrcWriter and Irc info. -> IrcHandler?
+    raw_cb: Vec<|s: &str, writer: &IrcWriter, info: &BotInfo|:'a>,
+
     // This is a workaround for a multimap.
-    code_cb: HashMap<String, Vec<|msg: &IrcMsg, writer: &IrcWriter|:'a>>,
+    code_cb: HashMap<String, Vec<|msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo|:'a>>,
 }
-
-// FIXME move?
-// Simple wrapper on top of regex replace matching.
-// Used for the option type.
-fn raw_replace(s: &str, re: Regex, res: &str) -> Option<String> {
-    if re.is_match(s) { // FIXME double matching!
-        Some(re.replace(s, res))
-    }
-    else {
-        None
-    }
-}
-
-// FIXME move?
-//fn ping(s: &str) -> Option<String> {
-    //raw_replace(s, regex!(r"^PING\s(.+)$"), "PONG $1")
-//}
 
 impl<'a> Irc<'a> {
     // Create a new irc instance and connect to the server, but don't act on it.
@@ -62,27 +43,26 @@ impl<'a> Irc<'a> {
         for x in conf.blacklist.iter() {
             blacklist.insert(x.to_string());
         }
+
         let mut irc = Irc {
             conn: ServerConnection::new(conf.host, conf.port),
             //tx: tx,
             //rx: rx,
-            nick: conf.nick,
-            descr: conf.descr,
-
+            info: BotInfo::new(&conf),
             blacklist: blacklist,
 
             raw_cb: Vec::new(),
             code_cb: HashMap::new(),
         };
 
-        irc.register_callbacks();
+        irc.register_default_callbacks();
         irc
     }
 
+    // Register a callback for a specific irc msg code.
     pub fn register_code_cb(&mut self, code: &str,
-                            cb: |msg: &IrcMsg, writer: &IrcWriter|:'a)
+                            cb: |msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo|:'a)
     {
-        //self.code_cb.insert(code.to_string(), cb);
         let c = code.to_string();
         if !self.code_cb.contains_key(&c) {
             self.code_cb.insert(c.clone(), Vec::new());
@@ -91,10 +71,16 @@ impl<'a> Irc<'a> {
         cbs.push(cb);
     }
 
-    fn register_callbacks(&mut self) {
-        //self.raw_cb.push(ping);
-        self.register_code_cb("PING", |msg: &IrcMsg, writer: &IrcWriter| {
+    fn register_default_callbacks(&mut self) {
+        self.register_code_cb("PING", |msg: &IrcMsg, writer: &IrcWriter, _| {
             writer.write_line(format!("PONG {}", msg.param));
+        });
+
+        // Key on 004, should be fine as it's usually in the beginning I believe?
+        self.register_code_cb("004", |_, writer: &IrcWriter, info: &BotInfo| {
+            for chan in info.channels.iter() {
+                writer.join(*chan);
+            }
         });
     }
 
@@ -117,7 +103,7 @@ impl<'a> Irc<'a> {
         if self.code_cb.contains_key(&c) {
             let cbs = self.code_cb.get_mut(&c);
             for cb in cbs.mut_iter() {
-                (*cb)(msg, writer);
+                (*cb)(msg, writer, &self.info);
             }
         }
 
@@ -131,11 +117,7 @@ impl<'a> Irc<'a> {
         let s = line.as_slice().trim();
 
         for cb in self.raw_cb.mut_iter() {
-            // FIXME pass in writer to callback instead?
-            match (*cb)(s) {
-                Some(x) => writer.write_line(x),
-                _ => (),
-            }
+            (*cb)(s, writer, &self.info);
         }
 
         match IrcMsg::new(s) {
@@ -148,6 +130,12 @@ impl<'a> Irc<'a> {
                 println!("<! {}", s);
             },
         }
+    }
+
+    // Actually write something to irc.
+    fn handle_write(&self, s: &String, stream: &mut LineBufferedWriter<TcpStream>) {
+        println!("> {}", s);
+        write_line(stream, s.as_slice());
     }
 
     // Run irc client and block until done.
@@ -173,7 +161,7 @@ impl<'a> Irc<'a> {
         });
     }
 
-    // FIXME spawn a thread instead?
+    // Run event handler. Will block.
     fn run_handler(&mut self, tx: Sender<ConnectionEvent>, rx: Receiver<ConnectionEvent>) {
         println!("Spawning event handler");
         let tcp = self.conn.tcp.clone();
@@ -181,23 +169,20 @@ impl<'a> Irc<'a> {
         let writer = IrcWriter::new(tx);
 
         // Start with identifying
-        writer.identify(self.nick, self.descr);
+        writer.identify(self.info.nick, self.info.descr);
 
         // Loop and handle in and output events.
         // Quit is a special case to allow us to close the program.
         for x in rx.iter() {
             match x {
                 Output(ref s) => {
-                    // FIXME method for this?
-                    println!("> {}", s);
-                    write_line(&mut stream, s.as_slice());
+                    self.handle_write(s, &mut stream);
                 },
                 Received(ref s) => {
                     self.handle_received(s, &writer);
                 },
                 Quit => {
-                    // FIXME close all things.
-                    //self.conn.close();
+                    self.conn.close();
                     break;
                 },
             }

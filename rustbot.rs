@@ -13,7 +13,6 @@ use std::*;
 use std::io::*;
 
 use irc::*;
-use irc::msg::*;
 use irc::config::*;
 use irc::writer::*;
 mod irc;
@@ -47,6 +46,7 @@ fn main() {
         port: 6667,
         nick: "rustbot",
         descr: "https://github.com/treeman/rustbot",
+        channels: vec!["#treecraft"],
         blacklist: vec![
             "001", "002", "003", "004", "005",  // greetings etc
             "005",                              // supported things
@@ -56,16 +56,7 @@ fn main() {
         ],
     };
 
-    let channels = vec!["#treecraft"];
-
-    // FIXME better interface? Or jus keep?
     let mut irc = Irc::connect(conf);
-    irc.register_code_cb("004",
-        |_: &IrcMsg, writer: &IrcWriter| {
-            for chan in channels.iter() {
-                writer.join(*chan);
-            }
-        });
 
     // FIXME make this work (need a writer!)
     //spawn_stdin_reader(irc.writer());

@@ -5,5 +5,6 @@ pub struct IrcConfig<'a> {
     pub port: u16,
     pub nick: &'a str,
     pub descr: &'a str,
+    pub channels: Vec<&'a str>,
     pub blacklist: Vec<&'a str>,
 }

@@ -1,14 +1,14 @@
 use core::fmt::{Show, Formatter, Result};
 
 // A regular irc message sent from the server.
-pub struct IrcMsg {
+pub struct IrcMsg<'a> {
     pub orig: String,
     pub prefix: String,
     pub code: String,
     pub param: String,
 }
 
-impl IrcMsg {
+impl<'a> IrcMsg<'a> {
     pub fn new(s: &str) -> Option<IrcMsg> {
         let re = regex!(r"^(:\S+)?\s*(\S+)\s+(.*)\r?$");
         let caps = re.captures(s);
@@ -26,7 +26,7 @@ impl IrcMsg {
     }
 }
 
-impl Show for IrcMsg {
+impl<'a> Show for IrcMsg<'a> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "prefix: {} code: {} param: {}",
                self.prefix, self.code, self.param)
