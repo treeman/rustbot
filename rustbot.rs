@@ -19,7 +19,43 @@ use irc::privmsg::*;
 use irc::connection::ConnectionEvent;
 use irc::config::IrcConfig;
 use irc::writer::IrcWriter;
+use irc::command::Command;
 mod irc;
+
+static CMD_KEY: char = '.';
+
+// If we shall continue the stdin loop or not.
+enum StdinControl {
+    Quit,
+    Continue
+}
+
+// We can do some rudimentary things from the commandline.
+fn stdin_cmd(cmd: &Command, writer: &IrcWriter) -> StdinControl {
+    match cmd.name {
+        "quit" => {
+            writer.quit("Gone for repairs");
+            return Quit;
+        },
+        "echo" => {
+            let rest = cmd.args.connect(" ");
+            writer.write_line(rest);
+        },
+        "say" => {
+            if cmd.args.len() > 1 {
+                let chan = cmd.args.get(0);
+                let rest = cmd.args.slice_from(1).connect(" ");
+                writer.msg_channel(*chan, &rest);
+            }
+            else {
+                // <receiver> can be either a channel or a user nick
+                println!("Usage: .say <receiver> text to send");
+            }
+        },
+        _ => (),
+    }
+    Continue // Don't quit by default
+}
 
 // Read input from stdin.
 fn stdin_reader(tx: Sender<ConnectionEvent>) {
@@ -32,11 +68,15 @@ fn stdin_reader(tx: Sender<ConnectionEvent>) {
         let x = s.as_slice().trim();
         println!("stdin: {}", x);
 
-        if x == ".quit" {
-            writer.quit("Gone for repairs");
-            break;
+        match Command::new(x, CMD_KEY) {
+            Some(cmd) => {
+                match stdin_cmd(&cmd, &writer) {
+                    Quit => break,
+                    _ => (),
+                }
+            },
+            None => (),
         }
-
     }
     println!("Quitting stdin reader");
 }
@@ -73,14 +113,14 @@ fn main() {
     // Utter a friendly greeting when joining
     irc.register_code_cb("JOIN", |msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo| {
         let chan = msg.param.clone();
-        writer.msg_channel(&chan, format!("The Mighty {} has arrived!", info.nick));
+        writer.msg_channel(chan.as_slice(), &format!("The Mighty {} has arrived!", info.nick));
     });
 
     // A simple way to be friendly.
     irc.register_privmsg_cb(|msg: &IrcPrivMsg, writer: &IrcWriter, _| {
         let re = regex!(r"^[Hh]ello[!.]*");
         if re.is_match(msg.msg.as_slice()) {
-            writer.msg_channel(&msg.channel, format!("Hello {}", msg.sender_nick));
+            writer.msg_channel(msg.channel.as_slice(), &format!("Hello {}", msg.sender_nick));
         }
     });
 

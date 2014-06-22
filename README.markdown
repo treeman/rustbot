@@ -10,8 +10,7 @@ TODO
 
 * Add a command struct
 * Add command callback
-* Merge IrcWriter to include irc info/config (want channels for better join hook)
-* Readd tests of parsing
+* Decide on writer interface (&str vs String vs &String...)
 
 Implement some behaviour
 -----------------------

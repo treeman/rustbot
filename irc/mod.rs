@@ -9,6 +9,7 @@ use irc::msg::IrcMsg;
 use irc::privmsg::IrcPrivMsg;
 use irc::writer::*;
 use irc::info::BotInfo;
+use irc::command::*;
 
 pub mod config;
 pub mod connection;
@@ -16,6 +17,7 @@ pub mod writer;
 pub mod msg;
 pub mod privmsg;
 pub mod info;
+pub mod command;
 
 pub struct Irc<'a> {
     // Connections to irc server and over internal channel.
@@ -28,18 +30,18 @@ pub struct Irc<'a> {
     out_blacklist: Vec<Regex>,
 
     // Callbacks at received events
-    raw_cb: Vec<|s: &str, writer: &IrcWriter, info: &BotInfo|:'a>,
+    raw_cb: Vec<|&str, &IrcWriter, &BotInfo|:'a>,
 
     // This is a workaround for a multimap.
-    code_cb: HashMap<String, Vec<|msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo|:'a>>,
+    code_cb: HashMap<String, Vec<|&IrcMsg, &IrcWriter, &BotInfo|:'a>>,
 
     // Callbacks for PRIVMSG
-    privmsg_cb: Vec<|msg: &IrcPrivMsg, writer: &IrcWriter, info: &BotInfo|:'a>,
+    privmsg_cb: Vec<|&IrcPrivMsg, &IrcWriter, &BotInfo|:'a>,
 
     // We can register external functions to be spawned during runtime.
     // Workaround as I couldn't get Irc to hold a valid tx we can return.
     // The problem is what to do with the rx.
-    spawn_funcs: Vec<fn(tx: Sender<ConnectionEvent>)>,
+    spawn_funcs: Vec<fn(Sender<ConnectionEvent>)>,
 }
 
 impl<'a> Irc<'a> {
@@ -70,8 +72,7 @@ impl<'a> Irc<'a> {
     }
 
     // Register a callback for a specific irc msg code.
-    pub fn register_code_cb(&mut self, code: &str,
-                            cb: |msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo|:'a)
+    pub fn register_code_cb(&mut self, code: &str, cb: |&IrcMsg, &IrcWriter, &BotInfo|:'a)
     {
         let c = code.to_string();
         if !self.code_cb.contains_key(&c) {
@@ -83,7 +84,7 @@ impl<'a> Irc<'a> {
 
     // Register a callback for a PRIVMSG.
     pub fn register_privmsg_cb(&mut self,
-                               cb: |msg: &IrcPrivMsg, writer: &IrcWriter, info: &BotInfo|:'a)
+                               cb: |&IrcPrivMsg, &IrcWriter, &BotInfo|:'a)
     {
         self.privmsg_cb.push(cb);
     }
@@ -185,7 +186,7 @@ impl<'a> Irc<'a> {
 
     // Expose internal tx channel through these callbacks.
     // Workaround as I couldn't make irc hold tx (and the problematic rx).
-    pub fn register_tx_proc(&mut self, f: fn(tx: Sender<ConnectionEvent>)) {
+    pub fn register_tx_proc(&mut self, f: fn(Sender<ConnectionEvent>)) {
         self.spawn_funcs.push(f);
     }
 
