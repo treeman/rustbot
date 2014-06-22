@@ -1,19 +1,21 @@
 use std::io::*;
-//use regex::*;
+use regex::*;
 use std::collections::hashmap::HashSet;
 use std::collections::hashmap::HashMap;
 
 use irc::config::*;
 use irc::connection::*;
 use irc::msg::IrcMsg;
+use irc::privmsg::IrcPrivMsg;
 use irc::writer::*;
 use irc::info::BotInfo;
 
 pub mod config;
 pub mod connection;
-pub mod msg;
 pub mod writer;
-mod info;
+pub mod msg;
+pub mod privmsg;
+pub mod info;
 
 pub struct Irc<'a> {
     // Connections to irc server and over internal channel.
@@ -21,13 +23,18 @@ pub struct Irc<'a> {
 
     // General config
     info: BotInfo<'a>,
-    blacklist: HashSet<String>, // String to avoid lifetime issues :)
+    // String to avoid lifetime issues :)
+    in_blacklist: HashSet<String>,
+    out_blacklist: Vec<Regex>,
 
     // Callbacks at received events
     raw_cb: Vec<|s: &str, writer: &IrcWriter, info: &BotInfo|:'a>,
 
     // This is a workaround for a multimap.
     code_cb: HashMap<String, Vec<|msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo|:'a>>,
+
+    // Callbacks for PRIVMSG
+    privmsg_cb: Vec<|msg: &IrcPrivMsg, writer: &IrcWriter, info: &BotInfo|:'a>,
 
     // We can register external functions to be spawned during runtime.
     // Workaround as I couldn't get Irc to hold a valid tx we can return.
@@ -39,19 +46,22 @@ impl<'a> Irc<'a> {
     // Create a new irc instance and connect to the server, but don't act on it.
     pub fn connect<'b>(conf: IrcConfig<'b>) -> Irc<'b> {
 
-        let mut blacklist = HashSet::new();
-        for x in conf.blacklist.iter() {
-            blacklist.insert(x.to_string());
+        // Couldn't there be a nicer way to do this?
+        let mut in_blacklist = HashSet::new();
+        for x in conf.in_blacklist.iter() {
+            in_blacklist.insert(x.to_string());
         }
 
         let mut irc = Irc {
             conn: ServerConnection::new(conf.host, conf.port),
 
             info: BotInfo::new(&conf),
-            blacklist: blacklist,
+            in_blacklist: in_blacklist,
+            out_blacklist: conf.out_blacklist,
 
             raw_cb: Vec::new(),
             code_cb: HashMap::new(),
+            privmsg_cb: Vec::new(),
             spawn_funcs: Vec::new(),
         };
 
@@ -71,6 +81,13 @@ impl<'a> Irc<'a> {
         cbs.push(cb);
     }
 
+    // Register a callback for a PRIVMSG.
+    pub fn register_privmsg_cb(&mut self,
+                               cb: |msg: &IrcPrivMsg, writer: &IrcWriter, info: &BotInfo|:'a)
+    {
+        self.privmsg_cb.push(cb);
+    }
+
     fn init_callbacks(&mut self) {
         self.register_code_cb("PING", |msg: &IrcMsg, writer: &IrcWriter, _| {
             writer.write_line(format!("PONG {}", msg.param));
@@ -84,11 +101,18 @@ impl<'a> Irc<'a> {
         });
     }
 
+    // Called when we see a PRIVMSG.
+    fn handle_priv_msg(&mut self, msg: &IrcPrivMsg, writer: &IrcWriter) {
+        for cb in self.privmsg_cb.mut_iter() {
+            (*cb)(msg, writer, &self.info);
+        }
+    }
+
     // Called when we have a properly formatted irc message.
     fn handle_msg(&mut self, msg: &IrcMsg, writer: &IrcWriter) {
         // Print received message if it's not blacklisted.
         let code = msg.code.clone();
-        if !self.blacklist.contains(&code) {
+        if !self.in_blacklist.contains(&code) {
             println!("< {}", msg.orig);
         }
 
@@ -101,8 +125,12 @@ impl<'a> Irc<'a> {
             }
         }
 
-        // FIXME callbacks for privmsg
-        // FIXME look for commands
+        match IrcPrivMsg::new(msg) {
+            Some(msg) => {
+                self.handle_priv_msg(&msg, writer);
+            },
+            _ => (),
+        }
     }
 
     // Called when we receive a response from the server.
@@ -128,8 +156,13 @@ impl<'a> Irc<'a> {
 
     // Actually write something to irc.
     fn handle_write(&self, s: &String, stream: &mut LineBufferedWriter<TcpStream>) {
-        println!("> {}", s);
-        write_line(stream, s.as_slice());
+        let s = s.as_slice();
+        for re in self.out_blacklist.iter() {
+            if !re.is_match(s) {
+                println!("> {}", s);
+            }
+        }
+        write_line(stream, s);
     }
 
     // Run irc client and block until done.

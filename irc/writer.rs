@@ -27,6 +27,11 @@ impl IrcWriter {
         self.write_line(format!("NICK {}", s));
     }
 
+    // Change nickname.
+    pub fn msg_channel(&self, channel: &String, msg: String) {
+        self.write_line(format!("PRIVMSG {} :{}", channel, msg));
+    }
+
     // Use for general output.
     pub fn write_line(&self, s: String) {
         self.tx.send(Output(s));
