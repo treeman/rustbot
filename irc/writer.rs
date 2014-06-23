@@ -32,6 +32,7 @@ impl IrcWriter {
         self.write_line(format!("PRIVMSG {} :{}", channel, msg));
     }
 
+    // FIXME split string on newlines!
     // Use for general output.
     pub fn write_line(&self, s: String) {
         self.tx.send(Output(s));

@@ -8,6 +8,7 @@ Be aware that rust is fast changing and I may not keep the code up to date.
 TODO
 ====
 
+* Split newlines in writer. Rename `write_line` to `output` or something.
 * Decide on writer interface (&str vs String vs &String...)
 * Logging
 * Auto-op in our channel

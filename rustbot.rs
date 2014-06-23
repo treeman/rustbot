@@ -33,10 +33,48 @@ static CMD_PREFIX: char = '.';
     //}
 //}
 // so I made a macro instead! :)
-macro_rules! register_reply_cmd(
+macro_rules! register_reply(
     ($irc:ident, $cmd:expr, $response:expr) => (
         $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
             writer.msg_channel(cmd.channel.as_slice(), &$response.to_string());
+        });
+    );
+)
+
+fn run_external_cmd(cmd: &str, args: &[&str]) -> String {
+    let mut process = match std::io::process::Command::new(cmd).args(args).spawn() {
+        Ok(p) => p,
+        Err(e) => fail!("Runtime error: {}", e),
+    };
+
+    match process.stdout.get_mut_ref().read_to_end() {
+        Ok(x) => {
+            // Hilarious :)
+            std::str::from_utf8(x.as_slice()).unwrap().to_string()
+        },
+        Err(e) => fail!("Read error: {}", e),
+    }
+}
+
+// Can optionally send args as well in a nice manner.
+// ex:
+// register_external!("cmd", "/usr/bin/foo");
+// register_external!("cmd", "/usr/bin/foo", "bar");
+// register_external!("cmd", "/usr/bin/foo", "bar", "quux");
+// and it will add args from irc.
+macro_rules! register_external(
+    ($irc:ident, $cmd:expr, $ext:expr) => (
+        $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
+            let response = run_external_cmd($cmd, cmd.args.as_slice());
+            writer.msg_channel(cmd.channel.as_slice(), &response);
+        });
+    );
+    ($irc:ident, $cmd:expr, $ext:expr, $($arg:tt)*) => (
+        $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
+            let mut args: Vec<&str> = vec![$($arg)*];
+            let res = args.append(cmd.args.as_slice());
+            let response = run_external_cmd($cmd, res.as_slice());
+            writer.msg_channel(cmd.channel.as_slice(), &response);
         });
     );
 )
@@ -88,10 +126,14 @@ fn main() {
     });
 
     // Simple things.
-    register_reply_cmd!(irc, "about", "I'm an irc bot written in rust as a learning experience.");
-    register_reply_cmd!(irc, "src", "https://github.com/treeman/rustbot");
-    register_reply_cmd!(irc, "botsnack", ":)");
-    register_reply_cmd!(irc, "status", "Status: 418 I'm a teapot");
+    register_reply!(irc, "about", "I'm an irc bot written in rust as a learning experience.");
+    register_reply!(irc, "src", "https://github.com/treeman/rustbot");
+    register_reply!(irc, "botsnack", ":)");
+    register_reply!(irc, "status", "Status: 418 I'm a teapot");
+
+    // External scripts
+    register_external!(irc, "ticker", "ticker");
+    register_external!(irc, "nextep", "nextep", "--short");
 
     irc.run();
 }
