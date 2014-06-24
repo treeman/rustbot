@@ -107,7 +107,7 @@ impl<'a> Irc<'a> {
 
     fn init_callbacks(&mut self) {
         self.register_code_cb("PING", |msg: &IrcMsg, writer: &IrcWriter, _| {
-            writer.write_line(format!("PONG {}", msg.param));
+            writer.output(format!("PONG {}", msg.param));
         });
 
         // Key on 004, should be fine as it's usually in the beginning I believe?

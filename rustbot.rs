@@ -22,6 +22,7 @@ use irc::config::IrcConfig;
 use irc::writer::IrcWriter;
 use irc::command::{Command, IrcCommand};
 mod irc;
+mod util;
 
 static CMD_PREFIX: char = '.';
 
@@ -71,7 +72,7 @@ macro_rules! register_external(
     );
     ($irc:ident, $cmd:expr, $ext:expr, $($arg:tt)*) => (
         $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
-            let mut args: Vec<&str> = vec![$($arg)*];
+            let args: Vec<&str> = vec![$($arg)*];
             let res = args.append(cmd.args.as_slice());
             let response = run_external_cmd($cmd, res.as_slice());
             writer.msg_channel(cmd.channel.as_slice(), &response);
@@ -96,7 +97,7 @@ fn main() {
             "005",                              // supported things
             "251", "252", "253", "254", "255",  // server status, num connections etc
             "372", "375", "376",                // MOTD
-            "NOTICE", "PING",                   // crap?
+            "PING",                             // crap?
         ],
 
         // Output is blacklisted with regexes, as they lack structure.
@@ -132,7 +133,6 @@ fn main() {
     register_reply!(irc, "status", "Status: 418 I'm a teapot");
 
     // External scripts
-    register_external!(irc, "ticker", "ticker");
     register_external!(irc, "nextep", "nextep", "--short");
 
     irc.run();
@@ -153,7 +153,7 @@ fn stdin_cmd(cmd: &Command, writer: &IrcWriter) -> StdinControl {
         },
         "echo" => {
             let rest = cmd.args.connect(" ");
-            writer.write_line(rest);
+            writer.output(rest);
         },
         "say" => {
             if cmd.args.len() > 1 {

@@ -1,4 +1,5 @@
 use irc::connection::*;
+use util::*;
 
 // Convenience wrapper to abstract away write commands.
 pub struct IrcWriter {
@@ -13,29 +14,37 @@ impl IrcWriter {
 
     // Join a channel.
     pub fn join(&self, chan: &str) {
-        self.write_line(format!("JOIN {}", chan));
+        self.output(format!("JOIN {}", chan));
     }
 
     // Identify us to the server.
     pub fn identify(&self, nick: &str, descr: &str) {
-        self.write_line(format!("NICK {}", nick));
-        self.write_line(format!("USER {} 8 * :{}", nick, descr));
+        self.output(format!("NICK {}", nick));
+        self.output(format!("USER {} 8 * :{}", nick, descr));
     }
 
     // Change nickname.
     pub fn nick(&self, s: &str) {
-        self.write_line(format!("NICK {}", s));
+        self.output(format!("NICK {}", s));
     }
 
-    // Change nickname.
+    // Send a PRIVMSG.
+    // FIXME could also msg a user...
     pub fn msg_channel(&self, channel: &str, msg: &String) {
-        self.write_line(format!("PRIVMSG {} :{}", channel, msg));
+        for line in newline_split(msg.as_slice()).iter() {
+            self.output(format!("PRIVMSG {} :{}", channel, line));
+        }
     }
 
-    // FIXME split string on newlines!
     // Use for general output.
-    pub fn write_line(&self, s: String) {
-        self.tx.send(Output(s));
+    pub fn output(&self, s: String) {
+        // FIXME pastebin http://pastebin.com/api
+        // when we have too many lines.
+        // FIXME throttle
+        let lines = newline_split(s.as_slice());
+        for line in lines.iter() {
+            self.tx.send(Output(line.to_string()));
+        }
     }
 
     // Use for closing down.
