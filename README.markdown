@@ -8,17 +8,15 @@ Be aware that rust is fast changing and I may not keep the code up to date.
 TODO
 ====
 
-* Split newlines in writer. Rename `write_line` to `output` or something.
 * Decide on writer interface (&str vs String vs &String...)
+* Upload to pastebin when we have many lines output
 * Logging
 * Auto-op in our channel
+* Autostart in screen
 
 Implement some behaviour
 -----------------------
 
-* Easy
-    * .help
-    * .nextep (external)
 * Medium
     * .cmds
     * auto op

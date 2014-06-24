@@ -126,11 +126,21 @@ fn main() {
         }
     });
 
+    let help_txt = "I'm a simple irc bot. Prefix commands with .";
+
+    irc.register_privmsg_cb(|msg: &IrcPrivMsg, writer: &IrcWriter, _| {
+        let txt = msg.txt.as_slice().trim();
+        if txt == "help" {
+            writer.msg_channel(msg.channel.as_slice(), &help_txt.to_string());
+        }
+    });
+
     // Simple things.
     register_reply!(irc, "about", "I'm an irc bot written in rust as a learning experience.");
     register_reply!(irc, "src", "https://github.com/treeman/rustbot");
     register_reply!(irc, "botsnack", ":)");
     register_reply!(irc, "status", "Status: 418 I'm a teapot");
+    register_reply!(irc, "help", help_txt);
 
     // External scripts
     register_external!(irc, "nextep", "nextep", "--short");
