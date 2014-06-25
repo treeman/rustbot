@@ -1,0 +1,18 @@
+{
+    "host": "irc.quakenet.org",
+    "port": 6667,
+    "nick": "rustbot",
+    "descr": "https://github.com/treeman/rustbot",
+    "channels": [
+        "#treecraft",
+    ],
+    "in_blacklist": [
+        "001", "002", "003", "004", "005",  # greeting etc
+        "005",                              # supported things
+        "251", "252", "253", "254", "255",  # server status, num connections etc
+        "372", "375", "376",                # MOTD
+        "PING"                              # crap?
+    ],
+    "out_blacklist": ["^PONG"],
+    "cmd_prefix": "."
+}
