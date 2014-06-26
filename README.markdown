@@ -8,10 +8,10 @@ Be aware that rust is fast changing and I may not keep the code up to date.
 TODO
 ====
 
-* Decide on writer interface (&str vs String vs &String...)
-* Upload to pastebin when we have many lines output
 * Logging
 * Auto-op in our channel
+* Upload to pastebin when we have many lines output
+* Move messages from String to &str
 * Autostart in screen
 
 Implement some behaviour

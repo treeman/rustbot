@@ -37,7 +37,7 @@ static CMD_PREFIX: char = '.';
 macro_rules! register_reply(
     ($irc:ident, $cmd:expr, $response:expr) => (
         $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
-            writer.msg_channel(cmd.channel.as_slice(), &$response.to_string());
+            writer.msg(cmd.channel.as_slice(), $response);
         });
     );
 )
@@ -75,7 +75,7 @@ macro_rules! register_external(
             let args: Vec<&str> = vec![$($arg)*];
             let res = args.append(cmd.args.as_slice());
             let response = run_external_cmd($cmd, res.as_slice());
-            writer.msg_channel(cmd.channel.as_slice(), &response);
+            writer.msg(cmd.channel, response.as_slice());
         });
     );
 )
@@ -112,8 +112,8 @@ fn main() {
 
     // Utter a friendly greeting when joining
     irc.register_code_cb("JOIN", |msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo| {
-        writer.msg_channel(msg.param.as_slice(),
-                           &format!("The Mighty {} has arrived!", info.nick));
+        writer.msg(msg.param.as_slice(),
+                   format!("The Mighty {} has arrived!", info.nick).as_slice());
     });
 
     // A simple way to be friendly.
@@ -121,8 +121,8 @@ fn main() {
     irc.register_privmsg_cb(|msg: &IrcPrivMsg, writer: &IrcWriter, _| {
         let re = regex!(r"^[Hh]ello[!.]*");
         if re.is_match(msg.txt.as_slice()) {
-            writer.msg_channel(msg.channel.as_slice(),
-                               &format!("Hello {}", msg.sender_nick));
+            writer.msg(msg.channel.as_slice(),
+                       format!("Hello {}", msg.sender_nick).as_slice());
         }
     });
 
@@ -131,7 +131,7 @@ fn main() {
     irc.register_privmsg_cb(|msg: &IrcPrivMsg, writer: &IrcWriter, _| {
         let txt = msg.txt.as_slice().trim();
         if txt == "help" {
-            writer.msg_channel(msg.channel.as_slice(), &help_txt.to_string());
+            writer.msg(msg.channel.as_slice(), help_txt);
         }
     });
 
@@ -169,7 +169,7 @@ fn stdin_cmd(cmd: &Command, writer: &IrcWriter) -> StdinControl {
             if cmd.args.len() > 1 {
                 let chan = cmd.args.get(0);
                 let rest = cmd.args.slice_from(1).connect(" ");
-                writer.msg_channel(*chan, &rest);
+                writer.msg(*chan, rest.as_slice());
             }
             else {
                 // <receiver> can be either a channel or a user nick

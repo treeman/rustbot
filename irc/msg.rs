@@ -24,6 +24,26 @@ impl IrcMsg {
             None => None
         }
     }
+
+    // Fetch nick + sender info
+    pub fn match_sender(&self) -> Option<(String, String)> {
+        let re = regex!(r":([^!]+)(?:!(.+))?");
+        let caps = re.captures(self.prefix.as_slice());
+        match caps {
+            Some(x) => Some((x.at(1).to_string(), x.at(2).to_string())),
+            None => None,
+        }
+    }
+
+    // Fetch channel + message
+    pub fn match_message(&self) -> Option<(String, String)> {
+        let re = regex!(r"(#\S+)\s+:(.*)");
+        let caps = re.captures(self.param.as_slice());
+        match caps {
+            Some(x) => Some((x.at(1).to_string(), x.at(2).to_string())),
+            None => None,
+        }
+    }
 }
 
 impl Show for IrcMsg {

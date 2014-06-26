@@ -271,22 +271,6 @@ impl<'a> Irc<'a> {
     }
 }
 
-//struct IrcPrivMsg {
-    //orig: String
-    //prefix: String,
-    //channel: String,
-    //msg: String,
-//}
-
-// Commands to the bot
-//struct IrcCmdMsg {
-    //orig: String,
-    //prefix: String,
-    //channel: String,
-    //cmd: String,
-    //args: String,
-//}
-
 #[cfg(test)]
 mod tests {
     // FIXME how to test callbacks?
