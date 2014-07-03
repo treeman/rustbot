@@ -93,7 +93,7 @@ fn main() {
 
         // Input blacklist by code.
         in_blacklist: vec![
-            "001", "002", "003", "004", "005",  // greetings etc
+            "001", "002", "003", "004",         // greetings etc
             "005",                              // supported things
             "251", "252", "253", "254", "255",  // server status, num connections etc
             "372", "375", "376",                // MOTD

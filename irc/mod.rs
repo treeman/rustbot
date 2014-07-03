@@ -192,10 +192,14 @@ impl<'a> Irc<'a> {
     // Actually write something to irc.
     fn handle_write(&self, s: &String, stream: &mut LineBufferedWriter<TcpStream>) {
         let s = s.as_slice();
+        let mut blacklisted = false;
         for re in self.out_blacklist.iter() {
-            if !re.is_match(s) {
-                println!("> {}", s);
+            if re.is_match(s) {
+                blacklisted = true;
             }
+        }
+        if !blacklisted {
+            println!("> {}", s);
         }
         write_line(stream, s);
     }
@@ -233,7 +237,10 @@ impl<'a> Irc<'a> {
             loop {
                 match read_line(&mut reader) {
                     Some(x) => tx.send(Received(x)),
-                    None => break,
+                    //None => break,
+                    // XXX for some reason this breaks sometimes?
+                    // try this out and see...
+                    None => (),
                 }
             }
             println!("Quitting irc reader");
