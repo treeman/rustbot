@@ -112,8 +112,10 @@ fn main() {
 
     // Utter a friendly greeting when joining
     irc.register_code_cb("JOIN", |msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo| {
-        writer.msg(msg.param.as_slice(),
-                   format!("The Mighty {} has arrived!", info.nick).as_slice());
+        if msg.prefix.as_slice().contains(info.nick) {
+            writer.msg(msg.param.as_slice(),
+                    format!("The Mighty {} has arrived!", info.nick).as_slice());
+        }
     });
 
     // A simple way to be friendly.
