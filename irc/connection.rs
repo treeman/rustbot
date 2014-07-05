@@ -13,6 +13,8 @@ pub struct ServerConnection {
     pub tcp: TcpStream,
     pub host: String,
     pub port: u16,
+    pub tx: Sender<ConnectionEvent>,
+    pub rx: Receiver<ConnectionEvent>,
 }
 
 impl ServerConnection {
@@ -25,12 +27,20 @@ impl ServerConnection {
             Err(e) => { fail!("{}", e); },
         };
         println!("Connected to {}:{}", host, port);
-        ServerConnection { tcp: tcp, host: host.to_string(), port: port }
+
+        let (tx, rx) = channel();
+        ServerConnection {
+            tcp: tcp,
+            host: host.to_string(),
+            port: port,
+            tx: tx,
+            rx: rx,
+        }
     }
 
     // Close tcp connection.
     // Will cause all readers and writers to exit, possibly with safe errors.
-    pub fn close(&mut self) {
+    pub fn close(mut self) {
         match self.tcp.close_read() {
             Err(e) => println!("Error closing read: {}", e),
             _ => (),

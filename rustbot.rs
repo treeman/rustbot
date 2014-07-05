@@ -9,18 +9,15 @@ extern crate regex_macros;
 extern crate regex;
 
 extern crate core;
+extern crate time;
 
 use std::*;
 use std::io::*;
+use std::io::Timer;
+use time::*;
 
 use irc::*;
-use irc::info::*;
-use irc::msg::*;
-use irc::privmsg::*;
-use irc::connection::ConnectionEvent;
-use irc::config::IrcConfig;
-use irc::writer::IrcWriter;
-use irc::command::{Command, IrcCommand};
+
 mod irc;
 mod util;
 
@@ -107,8 +104,16 @@ fn main() {
 
     let mut irc = Irc::connect(conf);
 
-    // Directly hook into internal channel.
-    irc.register_tx_proc(stdin_reader);
+    // Make it so we can read commands from stdin.
+    let writer = irc.writer();
+    spawn(proc() {
+        stdin_reader(writer);
+    });
+
+    let writer = irc.writer();
+    spawn(proc() {
+        reminder(writer);
+    });
 
     // Utter a friendly greeting when joining
     irc.register_code_cb("JOIN", |msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo| {
@@ -184,9 +189,7 @@ fn stdin_cmd(cmd: &Command, writer: &IrcWriter) -> StdinControl {
 }
 
 // Read input from stdin.
-fn stdin_reader(tx: Sender<ConnectionEvent>) {
-    let writer = IrcWriter::new(tx);
-
+fn stdin_reader(writer: IrcWriter) {
     println!("Spawning stdin reader");
     for line in io::stdin().lines() {
         // FIXME prettier...
@@ -205,5 +208,30 @@ fn stdin_reader(tx: Sender<ConnectionEvent>) {
         }
     }
     println!("Quitting stdin reader");
+}
+
+// Send a friendly reminder!
+fn reminder(writer: IrcWriter) {
+    let mut timer = Timer::new().unwrap();
+    let mut sent = false;
+
+    // Execute the loop every 10 minutes
+    let periodic = timer.periodic(1000 * 60 * 10);
+    loop {
+        periodic.recv();
+        println!("Executing MADNESS");
+
+        // Key on every 11:th hour
+        let curr = now();
+
+        if curr.tm_hour == 11 {
+            if !sent {
+                writer.msg("Firekite", "You need to kill things in habitrpg!");
+                sent = true;
+            }
+        } else {
+            sent = false;
+        }
+    }
 }
 
