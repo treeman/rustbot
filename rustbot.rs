@@ -195,7 +195,6 @@ fn stdin_reader(writer: IrcWriter) {
         // FIXME prettier...
         let s : String = line.unwrap();
         let x = s.as_slice().trim();
-        println!("stdin: {}", x);
 
         match Command::new(x, CMD_PREFIX) {
             Some(cmd) => {
@@ -219,7 +218,6 @@ fn reminder(writer: IrcWriter) {
     let periodic = timer.periodic(1000 * 60 * 10);
     loop {
         periodic.recv();
-        println!("Executing MADNESS");
 
         // Key on every 11:th hour
         let curr = now();
