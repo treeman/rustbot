@@ -6,6 +6,7 @@ pub struct IrcWriter {
     tx: Sender<ConnectionEvent>,
 }
 
+// FIXME take T: ToStr as input instead
 impl IrcWriter {
     // Wrapping a tx channel.
     pub fn new(tx: Sender<ConnectionEvent>) -> IrcWriter {
