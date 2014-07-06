@@ -1,3 +1,5 @@
+#![macro_escape]
+
 use std::io::*;
 
 use irc::config::*;
@@ -164,6 +166,51 @@ impl<'a> Irc<'a> {
         println!("Exiting irc writer");
     }
 }
+
+// Could not get this to work. Could not close over response,
+//fn reply_cb<'a>(response: &'a str) -> |&IrcCommand, &IrcWriter, &BotInfo|:'a {
+    //|cmd: &IrcCommand, writer: &IrcWriter, _| {
+        //let r = response.to_string();
+        //writer.msg_channel(cmd.channel.as_slice(), &r);
+    //}
+//}
+// so I made a macro instead! :)
+//
+// Simple way of registering a simple
+// .cmd -> response
+// ex: register_reply!(irc, "cheese", ":D");
+#[macro_export]
+macro_rules! register_reply(
+    ($irc:ident, $cmd:expr, $response:expr) => (
+        $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
+            writer.msg(cmd.channel.as_slice(), $response);
+        });
+    );
+)
+
+// Can optionally send args as well in a nice manner.
+// ex:
+// register_external!("cmd", "/usr/bin/foo");
+// register_external!("cmd", "/usr/bin/foo", "bar");
+// register_external!("cmd", "/usr/bin/foo", "bar", "quux");
+// and it will add args from irc.
+#[macro_export]
+macro_rules! register_external(
+    ($irc:ident, $cmd:expr, $ext:expr) => (
+        $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
+            let response = run_external_cmd($cmd, cmd.args.as_slice());
+            writer.msg_channel(cmd.channel.as_slice(), &response);
+        });
+    );
+    ($irc:ident, $cmd:expr, $ext:expr, $($arg:tt)*) => (
+        $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
+            let args: Vec<&str> = vec![$($arg)*];
+            let res = args.append(cmd.args.as_slice());
+            let response = util::run_external_cmd($cmd, res.as_slice());
+            writer.msg(cmd.channel, response.as_slice());
+        });
+    );
+)
 
 #[cfg(test)]
 mod tests {

@@ -23,60 +23,6 @@ mod util;
 
 static CMD_PREFIX: char = '.';
 
-// Could not get this to work. Could not close over response,
-//fn reply_cb<'a>(response: &'a str) -> |&IrcCommand, &IrcWriter, &BotInfo|:'a {
-    //|cmd: &IrcCommand, writer: &IrcWriter, _| {
-        //let r = response.to_string();
-        //writer.msg_channel(cmd.channel.as_slice(), &r);
-    //}
-//}
-// so I made a macro instead! :)
-macro_rules! register_reply(
-    ($irc:ident, $cmd:expr, $response:expr) => (
-        $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
-            writer.msg(cmd.channel.as_slice(), $response);
-        });
-    );
-)
-
-fn run_external_cmd(cmd: &str, args: &[&str]) -> String {
-    let mut process = match std::io::process::Command::new(cmd).args(args).spawn() {
-        Ok(p) => p,
-        Err(e) => fail!("Runtime error: {}", e),
-    };
-
-    match process.stdout.get_mut_ref().read_to_end() {
-        Ok(x) => {
-            // Hilarious :)
-            std::str::from_utf8(x.as_slice()).unwrap().to_string()
-        },
-        Err(e) => fail!("Read error: {}", e),
-    }
-}
-
-// Can optionally send args as well in a nice manner.
-// ex:
-// register_external!("cmd", "/usr/bin/foo");
-// register_external!("cmd", "/usr/bin/foo", "bar");
-// register_external!("cmd", "/usr/bin/foo", "bar", "quux");
-// and it will add args from irc.
-macro_rules! register_external(
-    ($irc:ident, $cmd:expr, $ext:expr) => (
-        $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
-            let response = run_external_cmd($cmd, cmd.args.as_slice());
-            writer.msg_channel(cmd.channel.as_slice(), &response);
-        });
-    );
-    ($irc:ident, $cmd:expr, $ext:expr, $($arg:tt)*) => (
-        $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
-            let args: Vec<&str> = vec![$($arg)*];
-            let res = args.append(cmd.args.as_slice());
-            let response = run_external_cmd($cmd, res.as_slice());
-            writer.msg(cmd.channel, response.as_slice());
-        });
-    );
-)
-
 fn main() {
     //let mut args = os::args();
     //let binary = args.shift();
@@ -135,8 +81,8 @@ fn main() {
         }
     });
 
+    // Simple help
     let help_txt = "I'm a simple irc bot. Prefix commands with .";
-
     irc.register_privmsg_cb(|msg: &IrcPrivMsg, writer: &IrcWriter, _| {
         let txt = msg.txt.as_slice().trim();
         if txt == "help" {

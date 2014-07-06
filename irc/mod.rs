@@ -1,3 +1,5 @@
+#![macro_escape]
+
 // We can reexport what we want to show from this module.
 pub use irc::config::IrcConfig;
 pub use irc::connection::{ConnectionEvent, ServerConnection};
@@ -17,4 +19,3 @@ pub mod info;
 pub mod command;
 pub mod data;
 pub mod irc;
-
