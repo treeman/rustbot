@@ -104,6 +104,8 @@ fn main() {
 
     let mut irc = Irc::connect(conf);
 
+    // TODO refactor callbacks etc...
+
     // Make it so we can read commands from stdin.
     let writer = irc.writer();
     spawn(proc() {
@@ -152,7 +154,32 @@ fn main() {
     // External scripts
     register_external!(irc, "nextep", "nextep", "--short");
 
+    // .uptime return the runtime of our bot
+    let start = now();
+    irc.register_cmd_cb("uptime", |cmd: &IrcCommand, writer: &IrcWriter, _| {
+        let at = now();
+        let dt = at.to_timespec().sec - start.to_timespec().sec;
+        writer.msg(cmd.channel.as_slice(), format!("I've been alive {}", format(dt)).as_slice());
+    });
+
     irc.run();
+}
+
+// 12 days 2 hours 3 minutes 48 seconds
+fn format(sec: i64) -> String {
+    let min: i64 = sec / 60;
+    let hours: i64 = min / 60;
+    let days: i64 = hours / 24;
+
+    if days > 0 {
+        format!("{} days {} hours {} minutes {} seconds", days, hours, min, sec)
+    } else if hours > 0 {
+        format!("{} hours {} minutes {} seconds", hours, min, sec)
+    } else if min > 0 {
+        format!("{} minutes {} seconds", min, sec)
+    } else {
+        format!("{} seconds", sec)
+    }
 }
 
 // If we shall continue the stdin loop or not.

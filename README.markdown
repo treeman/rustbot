@@ -20,12 +20,11 @@ Implement some behaviour
 * Medium
     * .cmds
     * auto op
-    * .uptime
     * .duke - Duke Nukem quotes
     * .insult - Monkey Island insults!
     * Post notification when I post a new blogpost at jonashieta.se
     * Mention whenever I make a commit at github  
-        curl -i https://api.github.com/users/treeman/events/public
+        `curl -i https://api.github.com/users/treeman/events/public`
 
     * Choose one item from a list of options
     * Track the last time a given nick was in the channel, and the last time they spoke
