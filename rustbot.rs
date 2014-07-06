@@ -112,10 +112,20 @@ fn main() {
 }
 
 // 12 days 2 hours 3 minutes 48 seconds
-fn format(sec: i64) -> String {
-    let min: i64 = sec / 60;
-    let hours: i64 = min / 60;
+fn format(mut sec: i64) -> String {
+    let mut min: i64 = sec / 60;
+    let mut hours: i64 = min / 60;
     let days: i64 = hours / 24;
+
+    if sec > 0 {
+        sec = sec - min * 60;
+    }
+    if hours > 0 {
+        min = min - hours * 60;
+    }
+    if days > 0 {
+        hours = hours - days * 24;
+    }
 
     if days > 0 {
         format!("{} days {} hours {} minutes {} seconds", days, hours, min, sec)
