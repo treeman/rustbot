@@ -219,10 +219,10 @@ fn reminder(writer: IrcWriter) {
     loop {
         periodic.recv();
 
-        // Key on every 11:th hour
+        // Key on every 23:th hour
         let curr = now();
 
-        if curr.tm_hour == 11 {
+        if curr.tm_hour == 23 {
             if !sent {
                 writer.msg("Firekite", "You need to kill things in habitrpg!");
                 sent = true;

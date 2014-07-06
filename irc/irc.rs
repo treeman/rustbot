@@ -98,8 +98,8 @@ impl<'a> Irc<'a> {
             let mut reader = BufferedReader::new(tcp);
             //let mut attempt = 0;
             loop {
-                match read_line(&mut reader) {
-                    Some(x) => {
+                match reader.read_line() {
+                    Ok(x) => {
                         tx.send(Received(x));
                         //if attempt > 0 {
                             //println!("Attempt {} successful!", attempt);
@@ -111,7 +111,8 @@ impl<'a> Irc<'a> {
                     //None => break,
                     // try this out and see...
                     // TODO fix something here
-                    None => {
+                    Err(e) => {
+                        println!("Error! {}", e);
                         //++attempt;
                     },
                 }
