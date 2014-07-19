@@ -6,6 +6,7 @@ pub struct IrcWriter {
     tx: Sender<ConnectionEvent>,
 }
 
+// FIXME take T: ToStr as input instead
 impl IrcWriter {
     // Wrapping a tx channel.
     pub fn new(tx: Sender<ConnectionEvent>) -> IrcWriter {
@@ -29,10 +30,9 @@ impl IrcWriter {
     }
 
     // Send a PRIVMSG.
-    // FIXME could also msg a user...
-    pub fn msg_channel(&self, channel: &str, msg: &String) {
-        for line in newline_split(msg.as_slice()).iter() {
-            self.output(format!("PRIVMSG {} :{}", channel, line));
+    pub fn msg(&self, target: &str, msg: &str) {
+        for line in newline_split(msg).iter() {
+            self.output(format!("PRIVMSG {} :{}", target, line));
         }
     }
 

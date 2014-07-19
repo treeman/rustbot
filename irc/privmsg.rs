@@ -15,7 +15,7 @@ pub struct IrcPrivMsg {
 impl IrcPrivMsg {
     pub fn new(msg: &IrcMsg) -> Option<IrcPrivMsg> {
         if msg.code.as_slice() == "PRIVMSG" {
-            match (match_sender(msg), match_message(msg)) {
+            match (msg.match_sender(), msg.match_message()) {
                 (Some((nick, info)), Some((channel, txt))) =>
                     Some(IrcPrivMsg {
                         orig: msg.orig.clone(),
@@ -37,26 +37,6 @@ impl Show for IrcPrivMsg {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "sender: {} ({}) channel: {} msg: {}",
                self.sender_nick, self.sender_info, self.channel, self.txt)
-    }
-}
-
-// Fetch nick + sender info
-fn match_sender(msg: &IrcMsg) -> Option<(String, String)> {
-    let re = regex!(r":([^!]+)(?:!(.+))?");
-    let caps = re.captures(msg.prefix.as_slice());
-    match caps {
-        Some(x) => Some((x.at(1).to_string(), x.at(2).to_string())),
-        None => None,
-    }
-}
-
-// Fetch channel + message
-fn match_message(msg: &IrcMsg) -> Option<(String, String)> {
-    let re = regex!(r"(#\S+)\s+:(.*)");
-    let caps = re.captures(msg.param.as_slice());
-    match caps {
-        Some(x) => Some((x.at(1).to_string(), x.at(2).to_string())),
-        None => None,
     }
 }
 

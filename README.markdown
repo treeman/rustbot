@@ -8,10 +8,10 @@ Be aware that rust is fast changing and I may not keep the code up to date.
 TODO
 ====
 
-* Decide on writer interface (&str vs String vs &String...)
-* Upload to pastebin when we have many lines output
 * Logging
 * Auto-op in our channel
+* Upload to pastebin when we have many lines output
+* Move messages from String to &str
 * Autostart in screen
 
 Implement some behaviour
@@ -20,9 +20,20 @@ Implement some behaviour
 * Medium
     * .cmds
     * auto op
-    * .uptime
     * .duke - Duke Nukem quotes
     * .insult - Monkey Island insults!
+    * Post notification when I post a new blogpost at jonashieta.se
+    * Mention whenever I make a commit at github  
+        `curl -i https://api.github.com/users/treeman/events/public`
+
+    * Choose one item from a list of options
+    * Track the last time a given nick was in the channel, and the last time they spoke
+    * .tell Queue a message for an offline nick that's automatically sent in-channel when they join
+    * Use Google Translate to translate a given phrase
+    * Display information about any posted Youtube link (video title, length, submitter, votes, comments, etc.)
+    * Post notifications to channel when teams get a point
+    * Url mentions, basically if someone links a URL , the bot displays a title of the page, and how many times its been mentioned.
+
 * Harder
     * .help [cmd]
     * .lithcourse

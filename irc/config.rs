@@ -34,13 +34,16 @@ impl JsonConfig {
             Err(e) => fail!("file error: {}", e)
         };
 
-        let decoded: String = match file.read_to_str() {
+        let decoded: String = match file.read_to_string() {
             Ok(f) => f,
             Err(e) => fail!("file error: {}", e)
         };
 
-        let json_object = json::from_str(decoded.as_slice());
-        let mut decoder = json::Decoder::new(json_object.unwrap());
+        let json_object = match json::from_str(decoded.as_slice()) {
+            Ok(x) => x,
+            Err(e) => fail!("json error: {}", e)
+        };
+        let mut decoder = json::Decoder::new(json_object);
 
         return match Decodable::decode(&mut decoder) {
             Ok(v) => v,

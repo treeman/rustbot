@@ -11,9 +11,13 @@ extern crate serialize;
 extern crate getopts;
 
 extern crate core;
+extern crate time;
+extern crate debug;
 
 use std::*;
 use std::io::*;
+use std::io::Timer;
+use time::*;
 
 use getopts::{
     optopt,
@@ -26,73 +30,17 @@ use irc::*;
 use irc::info::*;
 use irc::msg::*;
 use irc::privmsg::*;
-use irc::connection::ConnectionEvent;
 use irc::config::{IrcConfig, JsonConfig};
 use irc::writer::IrcWriter;
 use irc::command::{Command, IrcCommand};
 use regex::Regex;
+
 mod irc;
 mod util;
 
 static CMD_PREFIX: char = '.';
 
-// Could not get this to work. Could not close over response,
-//fn reply_cb<'a>(response: &'a str) -> |&IrcCommand, &IrcWriter, &BotInfo|:'a {
-    //|cmd: &IrcCommand, writer: &IrcWriter, _| {
-        //let r = response.to_string();
-        //writer.msg_channel(cmd.channel.as_slice(), &r);
-    //}
-//}
-// so I made a macro instead! :)
-macro_rules! register_reply(
-    ($irc:ident, $cmd:expr, $response:expr) => (
-        $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
-            writer.msg_channel(cmd.channel.as_slice(), &$response.to_string());
-        });
-    );
-)
-
-fn run_external_cmd(cmd: &str, args: &[&str]) -> String {
-    let mut process = match std::io::process::Command::new(cmd).args(args).spawn() {
-        Ok(p) => p,
-        Err(e) => fail!("Runtime error: {}", e),
-    };
-
-    match process.stdout.get_mut_ref().read_to_end() {
-        Ok(x) => {
-            // Hilarious :)
-            std::str::from_utf8(x.as_slice()).unwrap().to_string()
-        },
-        Err(e) => fail!("Read error: {}", e),
-    }
-}
-
-// Can optionally send args as well in a nice manner.
-// ex:
-// register_external!("cmd", "/usr/bin/foo");
-// register_external!("cmd", "/usr/bin/foo", "bar");
-// register_external!("cmd", "/usr/bin/foo", "bar", "quux");
-// and it will add args from irc.
-macro_rules! register_external(
-    ($irc:ident, $cmd:expr, $ext:expr) => (
-        $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
-            let response = run_external_cmd($cmd, cmd.args.as_slice());
-            writer.msg_channel(cmd.channel.as_slice(), &response);
-        });
-    );
-    ($irc:ident, $cmd:expr, $ext:expr, $($arg:tt)*) => (
-        $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
-            let args: Vec<&str> = vec![$($arg)*];
-            let res = args.append(cmd.args.as_slice());
-            let response = run_external_cmd($cmd, res.as_slice());
-            writer.msg_channel(cmd.channel.as_slice(), &response);
-        });
-    );
-)
-
 fn main() {
-    //let mut args = os::args();
-    //let binary = args.shift();
     let args = os::args();
 
     let opts = [
@@ -106,7 +54,7 @@ fn main() {
         Err(e) => fail!("{}", e)
     };
 
-    let progname = args.get(0).clone();
+    let progname = args[0].clone();
     let usage = usage("Starts rustbot, an IRC bot written in rust.", opts);
 
     let mode = if matches.opt_present("help") {
@@ -141,6 +89,7 @@ fn run(config: String) {
 
         // Input blacklist by code.
         in_blacklist: jconf.in_blacklist.iter().map(|x| x.as_slice()).collect(),
+
         // Output is blacklisted with regexes, as they lack structure.
         out_blacklist: jconf.out_blacklist.iter().map(
             |x| {
@@ -153,13 +102,25 @@ fn run(config: String) {
     };
     let mut irc = Irc::connect(conf);
 
-    // Directly hook into internal channel.
-    irc.register_tx_proc(stdin_reader);
+    // TODO refactor callbacks etc...
+
+    // Make it so we can read commands from stdin.
+    let writer = irc.writer();
+    spawn(proc() {
+        stdin_reader(writer);
+    });
+
+    let writer = irc.writer();
+    spawn(proc() {
+        reminder(writer);
+    });
 
     // Utter a friendly greeting when joining
     irc.register_code_cb("JOIN", |msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo| {
-        writer.msg_channel(msg.param.as_slice(),
-                           &format!("The Mighty {} has arrived!", info.nick));
+        if msg.prefix.as_slice().contains(info.nick) {
+            writer.msg(msg.param.as_slice(),
+                    format!("The Mighty {} has arrived!", info.nick).as_slice());
+        }
     });
 
     // A simple way to be friendly.
@@ -167,17 +128,17 @@ fn run(config: String) {
     irc.register_privmsg_cb(|msg: &IrcPrivMsg, writer: &IrcWriter, _| {
         let re = regex!(r"^[Hh]ello[!.]*");
         if re.is_match(msg.txt.as_slice()) {
-            writer.msg_channel(msg.channel.as_slice(),
-                               &format!("Hello {}", msg.sender_nick));
+            writer.msg(msg.channel.as_slice(),
+                       format!("Hello {}", msg.sender_nick).as_slice());
         }
     });
 
+    // Simple help
     let help_txt = "I'm a simple irc bot. Prefix commands with .";
-
     irc.register_privmsg_cb(|msg: &IrcPrivMsg, writer: &IrcWriter, _| {
         let txt = msg.txt.as_slice().trim();
         if txt == "help" {
-            writer.msg_channel(msg.channel.as_slice(), &help_txt.to_string());
+            writer.msg(msg.channel.as_slice(), help_txt);
         }
     });
 
@@ -191,7 +152,42 @@ fn run(config: String) {
     // External scripts
     register_external!(irc, "nextep", "nextep", "--short");
 
+    // .uptime return the runtime of our bot
+    let start = now();
+    irc.register_cmd_cb("uptime", |cmd: &IrcCommand, writer: &IrcWriter, _| {
+        let at = now();
+        let dt = at.to_timespec().sec - start.to_timespec().sec;
+        writer.msg(cmd.channel.as_slice(), format!("I've been alive {}", format(dt)).as_slice());
+    });
+
     irc.run();
+}
+
+// 12 days 2 hours 3 minutes 48 seconds
+fn format(mut sec: i64) -> String {
+    let mut min: i64 = sec / 60;
+    let mut hours: i64 = min / 60;
+    let days: i64 = hours / 24;
+
+    if sec > 0 {
+        sec = sec - min * 60;
+    }
+    if hours > 0 {
+        min = min - hours * 60;
+    }
+    if days > 0 {
+        hours = hours - days * 24;
+    }
+
+    if days > 0 {
+        format!("{} days {} hours {} minutes {} seconds", days, hours, min, sec)
+    } else if hours > 0 {
+        format!("{} hours {} minutes {} seconds", hours, min, sec)
+    } else if min > 0 {
+        format!("{} minutes {} seconds", min, sec)
+    } else {
+        format!("{} seconds", sec)
+    }
 }
 
 // If we shall continue the stdin loop or not.
@@ -213,9 +209,9 @@ fn stdin_cmd(cmd: &Command, writer: &IrcWriter) -> StdinControl {
         },
         "say" => {
             if cmd.args.len() > 1 {
-                let chan = cmd.args.get(0);
+                let chan = cmd.args[0];
                 let rest = cmd.args.slice_from(1).connect(" ");
-                writer.msg_channel(*chan, &rest);
+                writer.msg(chan, rest.as_slice());
             }
             else {
                 // <receiver> can be either a channel or a user nick
@@ -228,15 +224,12 @@ fn stdin_cmd(cmd: &Command, writer: &IrcWriter) -> StdinControl {
 }
 
 // Read input from stdin.
-fn stdin_reader(tx: Sender<ConnectionEvent>) {
-    let writer = IrcWriter::new(tx);
-
+fn stdin_reader(writer: IrcWriter) {
     println!("Spawning stdin reader");
     for line in io::stdin().lines() {
         // FIXME prettier...
         let s : String = line.unwrap();
         let x = s.as_slice().trim();
-        println!("stdin: {}", x);
 
         match Command::new(x, CMD_PREFIX) {
             Some(cmd) => {
@@ -265,3 +258,28 @@ enum Mode {
     Version,
     Run
 }
+
+// Send a friendly reminder!
+fn reminder(writer: IrcWriter) {
+    let mut timer = Timer::new().unwrap();
+    let mut sent = false;
+
+    // Execute the loop every 10 minutes
+    let periodic = timer.periodic(1000 * 60 * 10);
+    loop {
+        periodic.recv();
+
+        // Key on every 23:th hour
+        let curr = now();
+
+        if curr.tm_hour == 23 {
+            if !sent {
+                writer.msg("Firekite", "You need to kill things in habitrpg!");
+                sent = true;
+            }
+        } else {
+            sent = false;
+        }
+    }
+}
+

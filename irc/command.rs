@@ -45,7 +45,7 @@ impl<'a> Command<'a> {
         let s = s.trim();
         if s.len() > 0 && s.char_at(0) == key {
             let split = space_split(s);
-            let name = split.get(0).slice_from(1);
+            let name = split[0].slice_from(1);
             let args = Vec::from_slice(split.slice_from(1));
 
             Some(Command {
