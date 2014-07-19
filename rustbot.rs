@@ -157,9 +157,9 @@ fn stdin_cmd(cmd: &Command, writer: &IrcWriter) -> StdinControl {
         },
         "say" => {
             if cmd.args.len() > 1 {
-                let chan = cmd.args.get(0);
+                let chan = cmd.args[0];
                 let rest = cmd.args.slice_from(1).connect(" ");
-                writer.msg(*chan, rest.as_slice());
+                writer.msg(chan, rest.as_slice());
             }
             else {
                 // <receiver> can be either a channel or a user nick
