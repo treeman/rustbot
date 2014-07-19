@@ -7,16 +7,33 @@
 #[phase(plugin)]
 extern crate regex_macros;
 extern crate regex;
+extern crate serialize;
+extern crate getopts;
 
 extern crate core;
 extern crate time;
+extern crate debug;
 
 use std::*;
 use std::io::*;
 use std::io::Timer;
 use time::*;
 
+use getopts::{
+    optopt,
+    optflag,
+    getopts,
+    usage
+};
+
 use irc::*;
+use irc::info::*;
+use irc::msg::*;
+use irc::privmsg::*;
+use irc::config::{IrcConfig, JsonConfig};
+use irc::writer::IrcWriter;
+use irc::command::{Command, IrcCommand};
+use regex::Regex;
 
 mod irc;
 mod util;
@@ -24,30 +41,65 @@ mod util;
 static CMD_PREFIX: char = '.';
 
 fn main() {
-    //let mut args = os::args();
-    //let binary = args.shift();
+    let args = os::args();
 
-    let conf = IrcConfig {
-        host: "irc.quakenet.org",
-        port: 6667,
-        nick: "rustbot",
-        descr: "https://github.com/treeman/rustbot",
-        channels: vec!["#treecraft"], // Autojoin on connect
+    let opts = [
+        optopt("c", "config", "Specify config file, default: config.json", "CFILE"),
+        optflag("v", "version", "Output version information and exit"),
+        optflag("h", "help", "display this help and exit")
+    ];
 
-        // Input blacklist by code.
-        in_blacklist: vec![
-            "001", "002", "003", "004",         // greetings etc
-            "005",                              // supported things
-            "251", "252", "253", "254", "255",  // server status, num connections etc
-            "372", "375", "376",                // MOTD
-            "PING",                             // crap?
-        ],
-
-        // Output is blacklisted with regexes, as they lack structure.
-        out_blacklist: vec![regex!(r"^PONG")],
-        cmd_prefix: CMD_PREFIX,
+    let matches = match getopts(args.tail(), opts) {
+        Ok(m) => m,
+        Err(e) => fail!("{}", e)
     };
 
+    let progname = args[0].clone();
+    let usage = usage("Starts rustbot, an IRC bot written in rust.", opts);
+
+    let mode = if matches.opt_present("help") {
+        Help
+    } else if matches.opt_present("version") {
+        Version
+    } else {
+        Run
+    };
+
+    let config = match matches.opt_str("c") {
+        Some(c) => c,
+        None => "config.json".to_string()
+    };
+
+    match mode {
+        Help => help(progname.as_slice(), usage.as_slice()),
+        Version => version(),
+        Run => run(config)
+    }
+}
+
+fn run(config: String) {
+    let jconf = JsonConfig::new(config);
+
+    let conf = IrcConfig {
+        host: jconf.host.as_slice(),
+        port: jconf.port,
+        nick: jconf.nick.as_slice(),
+        descr: jconf.descr.as_slice(),
+        channels: jconf.channels.iter().map(|x| x.as_slice()).collect(), // Autojoin on connect
+
+        // Input blacklist by code.
+        in_blacklist: jconf.in_blacklist.iter().map(|x| x.as_slice()).collect(),
+
+        // Output is blacklisted with regexes, as they lack structure.
+        out_blacklist: jconf.out_blacklist.iter().map(
+            |x| {
+                match Regex::new(x.as_slice()) {
+                    Ok(re) => re,
+                    Err(err) => fail!("{}", err),
+                }
+            }).collect(),
+        cmd_prefix: jconf.cmd_prefix,
+    };
     let mut irc = Irc::connect(conf);
 
     // TODO refactor callbacks etc...
@@ -190,6 +242,21 @@ fn stdin_reader(writer: IrcWriter) {
         }
     }
     println!("Quitting stdin reader");
+}
+
+fn help(progname: &str, usage: &str) {
+    println!("Usage: {:s} [OPTION]", progname);
+    println(usage);
+}
+
+fn version() {
+    println!("rustbot 0.0.1");
+}
+
+enum Mode {
+    Help,
+    Version,
+    Run
 }
 
 // Send a friendly reminder!
