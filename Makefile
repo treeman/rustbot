@@ -1,13 +1,23 @@
-all: rustbot
+OUT_DIR = target
+MKDIR_P = mkdir -p
+
+.PHONY: directories
+
+all: directories rustbot
 
 rustbot:
-	rustc rustbot.rs -o rustbot
+	rustc src/main.rs -o target/rustbot
 
 clean:
-	rm rustbot rustbot-test -f
+	rm target -fr
 
-remake: clean rustbot
+remake: clean target/rustbot
 
-test:
-	rustc rustbot.rs --test -o rustbot-test
-	./rustbot-test
+test: directories
+	rustc src/main.rs --test -o target/rustbot-test
+	./target/rustbot-test
+
+directories: ${OUT_DIR}
+
+${OUT_DIR}:
+	${MKDIR_P} ${OUT_DIR}
