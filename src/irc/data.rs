@@ -11,8 +11,6 @@ use irc::writer::*;
 use irc::info::BotInfo;
 use irc::command::*;
 
-// FIXME use of callbacks!
-
 pub struct IrcData<'a> {
     // General config.
     pub info: BotInfo<'a>,
