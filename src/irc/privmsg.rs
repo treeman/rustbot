@@ -43,8 +43,10 @@ impl Show for IrcPrivMsg {
 
 #[cfg(test)]
 mod tests {
-    use IrcMsg = irc::msg::IrcMsg;
-    use IrcPrivMsg = super::IrcPrivMsg;
+    //use IrcMsg = irc::msg::IrcMsg;
+    //use IrcPrivMsg = super::IrcPrivMsg;
+    use irc::msg::IrcMsg;
+    use super::IrcPrivMsg;
 
     // Test irc message matching
     #[test]

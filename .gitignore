@@ -5,3 +5,4 @@ tst
 regex_tst
 rustbot-test
 target
+*.lock

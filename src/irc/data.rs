@@ -1,7 +1,7 @@
 use std::io::*;
 use regex::*;
-use std::collections::hashmap::HashSet;
-use std::collections::hashmap::HashMap;
+use std::collections::HashSet;
+use std::collections::HashMap;
 
 use irc::config::*;
 use irc::connection::*;
@@ -10,6 +10,8 @@ use irc::privmsg::IrcPrivMsg;
 use irc::writer::*;
 use irc::info::BotInfo;
 use irc::command::*;
+
+// FIXME use of callbacks!
 
 pub struct IrcData<'a> {
     // General config.
@@ -78,8 +80,8 @@ impl <'a> IrcData<'a> {
         // Trim away newlines and unneeded spaces.
         let s = line.as_slice().trim();
 
-        for cb in self.raw_cb.mut_iter() {
-            (*cb)(s, writer, &self.info);
+        for cb in self.raw_cb.iter() {
+            //(*cb)(s, writer, &self.info);
         }
 
         match IrcMsg::new(s) {
@@ -96,8 +98,8 @@ impl <'a> IrcData<'a> {
 
     // Called when we see a PRIVMSG.
     fn handle_priv_msg(&mut self, msg: &IrcPrivMsg, writer: &IrcWriter) {
-        for cb in self.privmsg_cb.mut_iter() {
-            (*cb)(msg, writer, &self.info);
+        for cb in self.privmsg_cb.iter() {
+            //(*cb)(msg, writer, &self.info);
         }
     }
 
@@ -106,9 +108,9 @@ impl <'a> IrcData<'a> {
         // Irc cmd callbacks.
         let c = cmd.name.to_string();
         if self.cmd_cb.contains_key(&c) {
-            let cbs = self.cmd_cb.get_mut(&c);
-            for cb in cbs.mut_iter() {
-                (*cb)(cmd, writer, &self.info);
+            let cbs = self.cmd_cb.get_mut(&c).unwrap();
+            for cb in cbs.iter() {
+                //(*cb)(cmd, writer, &self.info);
             }
         }
     }
@@ -124,9 +126,9 @@ impl <'a> IrcData<'a> {
         // Irc msg callbacks.
         let c = msg.code.clone();
         if self.code_cb.contains_key(&c) {
-            let cbs = self.code_cb.get_mut(&c);
-            for cb in cbs.mut_iter() {
-                (*cb)(msg, writer, &self.info);
+            let cbs = self.code_cb.get_mut(&c).unwrap();
+            for cb in cbs.iter() {
+                //(*cb)(msg, writer, &self.info);
             }
         }
 

@@ -1,5 +1,6 @@
 //use core::fmt::{Show, Formatter, Result};
 
+use std::*;
 use irc::privmsg::*;
 use util::*;
 
@@ -46,7 +47,8 @@ impl<'a> Command<'a> {
         if s.len() > 0 && s.char_at(0) == key {
             let split = space_split(s);
             let name = split[0].slice_from(1);
-            let args = Vec::from_slice(split.slice_from(1));
+            let mut args = Vec::new();
+            args.push_all(split.slice_from(1));
 
             Some(Command {
                 name: name,

@@ -43,7 +43,7 @@ impl<'a> Irc<'a> {
         if !self.data.cmd_cb.contains_key(&c) {
             self.data.cmd_cb.insert(c.clone(), Vec::new());
         }
-        let cbs = self.data.cmd_cb.get_mut(&c);
+        let cbs = self.data.cmd_cb.get_mut(&c).unwrap();
         cbs.push(cb);
     }
 
@@ -54,7 +54,7 @@ impl<'a> Irc<'a> {
         if !self.data.code_cb.contains_key(&c) {
             self.data.code_cb.insert(c.clone(), Vec::new());
         }
-        let cbs = self.data.code_cb.get_mut(&c);
+        let cbs = self.data.code_cb.get_mut(&c).unwrap();
         cbs.push(cb);
     }
 
@@ -204,9 +204,9 @@ macro_rules! register_external(
     );
     ($irc:ident, $cmd:expr, $ext:expr, $($arg:tt)*) => (
         $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
-            let args: Vec<&str> = vec![$($arg)*];
-            let res = args.append(cmd.args.as_slice());
-            let response = util::run_external_cmd($cmd, res.as_slice());
+            let mut args: Vec<&str> = vec![$($arg)*];
+            args.push_all(cmd.args.as_slice());
+            let response = util::run_external_cmd($cmd, args.as_slice());
             writer.msg(cmd.channel, response.as_slice());
         });
     );

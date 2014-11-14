@@ -12,12 +12,13 @@ extern crate getopts;
 
 extern crate core;
 extern crate time;
-extern crate debug;
+//extern crate debug;
 
-use std::*;
-use std::io::*;
+use std::os;
+use std::io;
+//use std::io::stdio::println;
 use std::io::Timer;
-use time::*;
+use std::time::Duration;
 
 use getopts::{
     optopt,
@@ -26,7 +27,8 @@ use getopts::{
     usage
 };
 
-use irc::*;
+//use irc::*;
+use irc::Irc;
 use irc::info::*;
 use irc::msg::*;
 use irc::privmsg::*;
@@ -51,7 +53,7 @@ fn main() {
 
     let matches = match getopts(args.tail(), opts) {
         Ok(m) => m,
-        Err(e) => fail!("{}", e)
+        Err(e) => panic!("{}", e)
     };
 
     let progname = args[0].clone();
@@ -95,7 +97,7 @@ fn run(config: String) {
             |x| {
                 match Regex::new(x.as_slice()) {
                     Ok(re) => re,
-                    Err(err) => fail!("{}", err),
+                    Err(err) => panic!("{}", err),
                 }
             }).collect(),
         cmd_prefix: jconf.cmd_prefix,
@@ -153,9 +155,9 @@ fn run(config: String) {
     register_external!(irc, "nextep", "nextep", "--short");
 
     // .uptime return the runtime of our bot
-    let start = now();
+    let start = time::now();
     irc.register_cmd_cb("uptime", |cmd: &IrcCommand, writer: &IrcWriter, _| {
-        let at = now();
+        let at = time::now();
         let dt = at.to_timespec().sec - start.to_timespec().sec;
         writer.msg(cmd.channel.as_slice(), format!("I've been alive {}", format(dt)).as_slice());
     });
@@ -246,7 +248,7 @@ fn stdin_reader(writer: IrcWriter) {
 
 fn help(progname: &str, usage: &str) {
     println!("Usage: {:s} [OPTION]", progname);
-    println(usage);
+    io::stdio::println(usage);
 }
 
 fn version() {
@@ -264,13 +266,13 @@ fn reminder(writer: IrcWriter) {
     let mut timer = Timer::new().unwrap();
     let mut sent = false;
 
-    // Execute the loop every 10 minutes
-    let periodic = timer.periodic(1000 * 60 * 10);
+    //let periodic = timer.periodic(1000 * 60 * 10);
+    let periodic = timer.periodic(Duration::minutes(10));
     loop {
         periodic.recv();
 
         // Key on every 23:th hour
-        let curr = now();
+        let curr = time::now();
 
         if curr.tm_hour == 23 {
             if !sent {

@@ -22,9 +22,10 @@ impl ServerConnection {
     // FIXME in the future, return error code.
     // But we need to use multiple servers for that to be useful.
     pub fn new(host: &str, port: u16) -> ServerConnection {
-        let tcp = match TcpStream::connect(host, port) {
+        let addr = format!("{:s}:{:u}", host, port);
+        let tcp = match TcpStream::connect(addr.as_slice()) {
             Ok(x) => x,
-            Err(e) => { fail!("{}", e); },
+            Err(e) => { panic!("{}", e); },
         };
         println!("Connected to {}:{}", host, port);
 

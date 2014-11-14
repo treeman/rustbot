@@ -31,23 +31,23 @@ impl JsonConfig {
         let p = Path::new(location.as_slice());
         let mut file = match File::open_mode(&p, Open, Read) {
             Ok(f) => f,
-            Err(e) => fail!("file error: {}", e)
+            Err(e) => panic!("file error: {}", e)
         };
 
         let decoded: String = match file.read_to_string() {
             Ok(f) => f,
-            Err(e) => fail!("file error: {}", e)
+            Err(e) => panic!("file error: {}", e)
         };
 
         let json_object = match json::from_str(decoded.as_slice()) {
             Ok(x) => x,
-            Err(e) => fail!("json error: {}", e)
+            Err(e) => panic!("json error: {}", e)
         };
         let mut decoder = json::Decoder::new(json_object);
 
         return match Decodable::decode(&mut decoder) {
             Ok(v) => v,
-            Err(e) => fail!("Decoding error: {}", e)
+            Err(e) => panic!("Decoding error: {}", e)
         };
     }
 }
