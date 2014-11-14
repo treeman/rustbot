@@ -29,14 +29,13 @@ pub fn run_external_cmd(cmd: &str, args: &[&str]) -> String {
         Err(e) => panic!("Runtime error: {}", e),
     };
 
-    // FIXME
-    //match process.stdout.unwrap().read_to_end() {
-        //Ok(x) => {
-            //// Hilarious :)
-            //std::str::from_utf8(x.as_slice()).unwrap().to_string()
-        //},
-        //Err(e) => panic!("Read error: {}", e),
-    //}
-    "".to_string()
+    let output = process.stdout.as_mut().unwrap().read_to_end();
+    match output {
+        Ok(x) => {
+            // Hilarious :)
+            std::str::from_utf8(x.as_slice()).unwrap().to_string()
+        },
+        Err(e) => panic!("Read error: {}", e),
+    }
 }
 

@@ -1,6 +1,5 @@
 //use core::fmt::{Show, Formatter, Result};
 
-use std::*;
 use irc::privmsg::*;
 use util::*;
 
