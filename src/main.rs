@@ -12,13 +12,12 @@ extern crate getopts;
 
 extern crate core;
 extern crate time;
-//extern crate debug;
 
 use std::os;
 use std::io;
-//use std::io::stdio::println;
 use std::io::Timer;
 use std::time::Duration;
+use regex::Regex;
 
 use getopts::{
     optopt,
@@ -27,7 +26,6 @@ use getopts::{
     usage
 };
 
-//use irc::*;
 use irc::Irc;
 use irc::info::*;
 use irc::msg::*;
@@ -35,7 +33,6 @@ use irc::privmsg::*;
 use irc::config::{IrcConfig, JsonConfig};
 use irc::writer::IrcWriter;
 use irc::command::{Command, IrcCommand};
-use regex::Regex;
 
 mod irc;
 mod util;
