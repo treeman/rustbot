@@ -248,6 +248,7 @@ fn help(progname: &str, usage: &str) {
     io::stdio::println(usage);
 }
 
+// FIXME Load version from Cargo.toml
 fn version() {
     println!("rustbot 0.0.1");
 }
@@ -263,7 +264,6 @@ fn reminder(writer: IrcWriter) {
     let mut timer = Timer::new().unwrap();
     let mut sent = false;
 
-    //let periodic = timer.periodic(1000 * 60 * 10);
     let periodic = timer.periodic(Duration::minutes(10));
     loop {
         periodic.recv();

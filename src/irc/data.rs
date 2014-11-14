@@ -80,8 +80,8 @@ impl <'a> IrcData<'a> {
         // Trim away newlines and unneeded spaces.
         let s = line.as_slice().trim();
 
-        for cb in self.raw_cb.iter() {
-            //(*cb)(s, writer, &self.info);
+        for cb in self.raw_cb.iter_mut() {
+            (*cb)(s, writer, &self.info);
         }
 
         match IrcMsg::new(s) {
@@ -98,8 +98,8 @@ impl <'a> IrcData<'a> {
 
     // Called when we see a PRIVMSG.
     fn handle_priv_msg(&mut self, msg: &IrcPrivMsg, writer: &IrcWriter) {
-        for cb in self.privmsg_cb.iter() {
-            //(*cb)(msg, writer, &self.info);
+        for cb in self.privmsg_cb.iter_mut() {
+            (*cb)(msg, writer, &self.info);
         }
     }
 
@@ -109,8 +109,8 @@ impl <'a> IrcData<'a> {
         let c = cmd.name.to_string();
         if self.cmd_cb.contains_key(&c) {
             let cbs = self.cmd_cb.get_mut(&c).unwrap();
-            for cb in cbs.iter() {
-                //(*cb)(cmd, writer, &self.info);
+            for cb in cbs.iter_mut() {
+                (*cb)(cmd, writer, &self.info);
             }
         }
     }
@@ -127,8 +127,8 @@ impl <'a> IrcData<'a> {
         let c = msg.code.clone();
         if self.code_cb.contains_key(&c) {
             let cbs = self.code_cb.get_mut(&c).unwrap();
-            for cb in cbs.iter() {
-                //(*cb)(msg, writer, &self.info);
+            for cb in cbs.iter_mut() {
+                (*cb)(msg, writer, &self.info);
             }
         }
 
