@@ -41,7 +41,7 @@ impl IrcWriter {
         // FIXME pastebin http://pastebin.com/api
         // when we have too many lines.
         // FIXME throttle
-        let lines = newline_split(s.as_slice());
+        let lines = newline_split(s[]);
         for line in lines.iter() {
             self.tx.send(Output(line.to_string()));
         }

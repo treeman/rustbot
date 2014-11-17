@@ -60,7 +60,7 @@ impl <'a> IrcData<'a> {
 
     // Actually write something to irc.
     pub fn handle_write(&self, s: &String, stream: &mut LineBufferedWriter<TcpStream>) {
-        let s = s.as_slice();
+        let s = s[];
         let mut blacklisted = false;
         for re in self.out_blacklist.iter() {
             if re.is_match(s) {
@@ -76,7 +76,7 @@ impl <'a> IrcData<'a> {
     // Called when we receive a response from the server.
     pub fn handle_received(&mut self, line: &String, writer: &IrcWriter) {
         // Trim away newlines and unneeded spaces.
-        let s = line.as_slice().trim();
+        let s = line[].trim();
 
         for cb in self.raw_cb.iter_mut() {
             (*cb)(s, writer, &self.info);

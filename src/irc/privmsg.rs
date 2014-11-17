@@ -14,7 +14,7 @@ pub struct IrcPrivMsg {
 
 impl IrcPrivMsg {
     pub fn new(msg: &IrcMsg) -> Option<IrcPrivMsg> {
-        if msg.code.as_slice() == "PRIVMSG" {
+        if msg.code[] == "PRIVMSG" {
             match (msg.match_sender(), msg.match_message()) {
                 (Some((nick, info)), Some((channel, txt))) =>
                     Some(IrcPrivMsg {

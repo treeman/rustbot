@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![feature(globs)]
 #![feature(macro_rules)]
+#![feature(slicing_syntax)]
 
 // For regex usage
 #![feature(phase)]
@@ -70,7 +71,7 @@ fn main() {
     };
 
     match mode {
-        Help => help(progname.as_slice(), usage.as_slice()),
+        Help => help(progname[], usage[]),
         Version => version(),
         Run => run(config)
     }
@@ -80,19 +81,19 @@ fn run(config: String) {
     let jconf = JsonConfig::new(config);
 
     let conf = IrcConfig {
-        host: jconf.host.as_slice(),
+        host: jconf.host[],
         port: jconf.port,
-        nick: jconf.nick.as_slice(),
-        descr: jconf.descr.as_slice(),
-        channels: jconf.channels.iter().map(|x| x.as_slice()).collect(), // Autojoin on connect
+        nick: jconf.nick[],
+        descr: jconf.descr[],
+        channels: jconf.channels.iter().map(|x| x[]).collect(), // Autojoin on connect
 
         // Input blacklist by code.
-        in_blacklist: jconf.in_blacklist.iter().map(|x| x.as_slice()).collect(),
+        in_blacklist: jconf.in_blacklist.iter().map(|x| x[]).collect(),
 
         // Output is blacklisted with regexes, as they lack structure.
         out_blacklist: jconf.out_blacklist.iter().map(
             |x| {
-                match Regex::new(x.as_slice()) {
+                match Regex::new(x[]) {
                     Ok(re) => re,
                     Err(err) => panic!("{}", err),
                 }
@@ -116,9 +117,9 @@ fn run(config: String) {
 
     // Utter a friendly greeting when joining
     irc.register_code_cb("JOIN", |msg: &IrcMsg, writer: &IrcWriter, info: &BotInfo| {
-        if msg.prefix.as_slice().contains(info.nick) {
-            writer.msg(msg.param.as_slice(),
-                    format!("The Mighty {} has arrived!", info.nick).as_slice());
+        if msg.prefix[].contains(info.nick) {
+            writer.msg(msg.param[],
+                    format!("The Mighty {} has arrived!", info.nick)[]);
         }
     });
 
@@ -126,18 +127,18 @@ fn run(config: String) {
     // TODO regex -> response macro?
     irc.register_privmsg_cb(|msg: &IrcPrivMsg, writer: &IrcWriter, _| {
         let re = regex!(r"^[Hh]ello[!.]*");
-        if re.is_match(msg.txt.as_slice()) {
-            writer.msg(msg.channel.as_slice(),
-                       format!("Hello {}", msg.sender_nick).as_slice());
+        if re.is_match(msg.txt[]) {
+            writer.msg(msg.channel[],
+                       format!("Hello {}", msg.sender_nick)[]);
         }
     });
 
     // Simple help
     let help_txt = "I'm a simple irc bot. Prefix commands with .";
     irc.register_privmsg_cb(|msg: &IrcPrivMsg, writer: &IrcWriter, _| {
-        let txt = msg.txt.as_slice().trim();
+        let txt = msg.txt[].trim();
         if txt == "help" {
-            writer.msg(msg.channel.as_slice(), help_txt);
+            writer.msg(msg.channel[], help_txt);
         }
     });
 
@@ -156,7 +157,7 @@ fn run(config: String) {
     irc.register_cmd_cb("uptime", |cmd: &IrcCommand, writer: &IrcWriter, _| {
         let at = time::now();
         let dt = at.to_timespec().sec - start.to_timespec().sec;
-        writer.msg(cmd.channel.as_slice(), format!("I've been alive {}", format(dt)).as_slice());
+        writer.msg(cmd.channel[], format!("I've been alive {}", format(dt))[]);
     });
 
     irc.run();
@@ -210,7 +211,7 @@ fn stdin_cmd(cmd: &Command, writer: &IrcWriter) -> StdinControl {
             if cmd.args.len() > 1 {
                 let chan = cmd.args[0];
                 let rest = cmd.args.slice_from(1).connect(" ");
-                writer.msg(chan, rest.as_slice());
+                writer.msg(chan, rest[]);
             }
             else {
                 // <receiver> can be either a channel or a user nick
@@ -228,7 +229,7 @@ fn stdin_reader(writer: IrcWriter) {
     for line in io::stdin().lines() {
         // FIXME prettier...
         let s : String = line.unwrap();
-        let x = s.as_slice().trim();
+        let x = s[].trim();
 
         match Command::new(x, CMD_PREFIX) {
             Some(cmd) => {

@@ -28,7 +28,7 @@ pub struct JsonConfig {
 
 impl JsonConfig {
     pub fn new(location: String) -> JsonConfig {
-        let p = Path::new(location.as_slice());
+        let p = Path::new(location[]);
         let mut file = match File::open_mode(&p, Open, Read) {
             Ok(f) => f,
             Err(e) => panic!("file error: {}", e)
@@ -39,7 +39,7 @@ impl JsonConfig {
             Err(e) => panic!("file error: {}", e)
         };
 
-        let json_object = match json::from_str(decoded.as_slice()) {
+        let json_object = match json::from_str(decoded[]) {
             Ok(x) => x,
             Err(e) => panic!("json error: {}", e)
         };

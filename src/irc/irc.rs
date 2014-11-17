@@ -171,7 +171,7 @@ impl<'a> Irc<'a> {
 //fn reply_cb<'a>(response: &'a str) -> |&IrcCommand, &IrcWriter, &BotInfo|:'a {
     //|cmd: &IrcCommand, writer: &IrcWriter, _| {
         //let r = response.to_string();
-        //writer.msg_channel(cmd.channel.as_slice(), &r);
+        //writer.msg_channel(cmd.channel[], &r);
     //}
 //}
 // so I made a macro instead! :)
@@ -183,7 +183,7 @@ impl<'a> Irc<'a> {
 macro_rules! register_reply(
     ($irc:ident, $cmd:expr, $response:expr) => (
         $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
-            writer.msg(cmd.channel.as_slice(), $response);
+            writer.msg(cmd.channel[], $response);
         });
     );
 )
@@ -198,16 +198,16 @@ macro_rules! register_reply(
 macro_rules! register_external(
     ($irc:ident, $cmd:expr, $ext:expr) => (
         $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
-            let response = run_external_cmd($cmd, cmd.args.as_slice());
-            writer.msg_channel(cmd.channel.as_slice(), &response);
+            let response = run_external_cmd($cmd, cmd.args[]);
+            writer.msg_channel(cmd.channel[], &response);
         });
     );
     ($irc:ident, $cmd:expr, $ext:expr, $($arg:tt)*) => (
         $irc.register_cmd_cb($cmd, |cmd: &IrcCommand, writer: &IrcWriter, _| {
             let mut args: Vec<&str> = vec![$($arg)*];
-            args.push_all(cmd.args.as_slice());
-            let response = util::run_external_cmd($cmd, args.as_slice());
-            writer.msg(cmd.channel, response.as_slice());
+            args.push_all(cmd.args[]);
+            let response = util::run_external_cmd($cmd, args[]);
+            writer.msg(cmd.channel, response[]);
         });
     );
 )

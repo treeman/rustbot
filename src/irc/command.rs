@@ -14,13 +14,13 @@ pub struct IrcCommand<'a> {
 // TODO something like this?
 impl<'a> IrcCommand<'a> {
     pub fn new(msg: &'a IrcPrivMsg, key: char) -> Option<IrcCommand<'a>> {
-        match Command::new(msg.txt.as_slice(), key) {
+        match Command::new(msg.txt[], key) {
             Some(cmd) => {
                 Some(IrcCommand {
                     name: cmd.name,
                     args: cmd.args,
                     //msg: msg,
-                    channel: msg.channel.as_slice(),
+                    channel: msg.channel[],
                 })
             },
             None => None,
