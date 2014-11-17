@@ -22,7 +22,7 @@ pub struct IrcData<'a> {
     // Callbacks at received events.
     pub raw_cb: Vec<|&str, &IrcWriter, &BotInfo|:'a>,
 
-    // This is a workaround for a multimap.
+    // Callbacks for specific irc codes. Multimap.
     pub code_cb: HashMap<String, Vec<|&IrcMsg, &IrcWriter, &BotInfo|:'a>>,
 
     // Callbacks for PRIVMSG.
@@ -58,7 +58,7 @@ impl <'a> IrcData<'a> {
         }
     }
 
-    // Actually write something to irc.
+    /// Actually write something to irc.
     pub fn handle_write(&self, s: &String, stream: &mut LineBufferedWriter<TcpStream>) {
         let s = s[];
         let mut blacklisted = false;
@@ -73,7 +73,7 @@ impl <'a> IrcData<'a> {
         write_line(stream, s);
     }
 
-    // Called when we receive a response from the server.
+    /// Called when we receive a response from the server.
     pub fn handle_received(&mut self, line: &String, writer: &IrcWriter) {
         // Trim away newlines and unneeded spaces.
         let s = line[].trim();
@@ -94,26 +94,48 @@ impl <'a> IrcData<'a> {
         }
     }
 
-    // Called when we see a PRIVMSG.
+    /// Called when we see a PRIVMSG.
     fn handle_priv_msg(&mut self, msg: &IrcPrivMsg, writer: &IrcWriter) {
         for cb in self.privmsg_cb.iter_mut() {
             (*cb)(msg, writer, &self.info);
         }
     }
 
-    // Called when we receive a command from irc.
+    /// Called when we receive a command from irc.
     fn handle_cmd(&mut self, cmd: &IrcCommand, writer: &IrcWriter) {
         // Irc cmd callbacks.
         let c = cmd.name.to_string();
-        if self.cmd_cb.contains_key(&c) {
-            let cbs = self.cmd_cb.get_mut(&c).unwrap();
-            for cb in cbs.iter_mut() {
-                (*cb)(cmd, writer, &self.info);
+
+        // FIXME Need to hardcode .cmds for now.
+        // Registered callbacks doesn't have access to IrcData.
+        if c[] == "cmds" {
+            let mut cmds: Vec<&str> = self.cmd_cb.keys().map(|x| x[]).collect();
+
+            // Manually add hardcoded commands.
+            cmds.push_all(["cmds"]);
+            cmds.sort();
+
+            // Should be a join somewhere here right?
+            let mut response = "".to_string();
+            for c in cmds.iter() {
+                if !response.is_empty() {
+                    response.push_str(", ");
+                }
+                response.push_str(*c);
+            }
+
+            writer.msg(cmd.channel[], response[]);
+        } else {
+            if self.cmd_cb.contains_key(&c) {
+                let cbs = self.cmd_cb.get_mut(&c).unwrap();
+                for cb in cbs.iter_mut() {
+                    (*cb)(cmd, writer, &self.info);
+                }
             }
         }
     }
 
-    // Called when we have a properly formatted irc message.
+    /// Called when we have a properly formatted irc message.
     fn handle_msg(&mut self, msg: &IrcMsg, writer: &IrcWriter) {
         // Print received message if it's not blacklisted.
         let code = msg.code.clone();

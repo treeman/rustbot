@@ -1,6 +1,7 @@
 #![macro_escape]
 
 use std::io::*;
+use std::time::Duration;
 
 use irc::config::*;
 use irc::connection::*;
@@ -98,38 +99,33 @@ impl<'a> Irc<'a> {
         let tcp = self.conn.tcp.clone(); // Workaround to avoid irc capture
         spawn(proc() {
             let mut reader = BufferedReader::new(tcp);
-            //let mut attempt = 0;
+            let mut attempt = 0u;
             loop {
                 match reader.read_line() {
                     Ok(x) => {
                         tx.send(Received(x));
-                        //if attempt > 0 {
-                            //println!("Attempt {} successful!", attempt);
-                        //}
-                        //attempt = 0;
+                        if attempt > 0 {
+                            println!("Attempt {} successful!", attempt);
+                        }
+                        attempt = 0;
                     },
 
-                    // XXX for some reason this breaks sometimes?
-                    //None => break,
-                    // try this out and see...
-                    // TODO fix something here
                     Err(e) => {
                         println!("Error! {}", e);
-                        //++attempt;
+                        attempt += 1;
                     },
                 }
 
                 // If we fail, only attempt it 5 times.
+                if attempt == 5 {
+                    break;
                 // Use a 5 second delay between possible attempts.
-                //if attempt == 5 {
-                    //break;
-                //} else if attempt > 0 {
-                    //println!("Waiting 5 seconds before next attempt...");
-                    //timer::sleep(5000);
-                //}
+                } else if attempt > 0 {
+                    println!("Waiting 5 seconds before next attempt...");
+                    timer::sleep(Duration::seconds(5));
+                }
             }
-            // Avoid unreachable statement warning fo rnow...
-            //println!("Quitting irc reader");
+            println!("Quitting irc reader");
         });
     }
 
