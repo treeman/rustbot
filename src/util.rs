@@ -39,3 +39,22 @@ pub fn run_external_cmd(cmd: &str, args: &[&str]) -> String {
     }
 }
 
+// TODO move this somewhere...
+// FIXME should operate on iterators.
+pub fn join(xs: &Vec<&str>, between: &str) -> String {
+    let mut res = String::new();
+    for x in xs.iter() {
+        if !res.is_empty() {
+            res.push_str(between);
+        }
+        res.push_str(*x);
+    }
+    return res;
+}
+
+#[test]
+fn test_join() {
+    assert_eq!(join(&vec!["a", "b", "c"], ", "),
+        "a, b, c".to_string());
+}
+

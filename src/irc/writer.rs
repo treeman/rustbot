@@ -43,14 +43,14 @@ impl IrcWriter {
         // FIXME throttle
         let lines = newline_split(s[]);
         for line in lines.iter() {
-            self.tx.send(Output(line.to_string()));
+            self.tx.send(ConnectionEvent::Output(line.to_string()));
         }
     }
 
     // Use for closing down.
     pub fn quit(&self, s: &str) {
-        self.tx.send(Output(format!("QUIT :{}", s)));
-        self.tx.send(Quit);
+        self.tx.send(ConnectionEvent::Output(format!("QUIT :{}", s)));
+        self.tx.send(ConnectionEvent::Quit);
     }
 }
 

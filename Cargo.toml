@@ -7,3 +7,8 @@ authors = ["Jonas Hietala <mail@Jonashietala.se>"]
 [dependencies.time]
 
 git = "https://github.com/rust-lang/time"
+
+[dependencies.timeedit]
+
+git = "https://github.com/treeman/libtimeedit"
+

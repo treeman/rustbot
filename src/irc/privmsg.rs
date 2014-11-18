@@ -62,7 +62,7 @@ mod tests {
         none_msg(":underworld2.no.quakenet.org 221 rustbot +i");
     }
 
-    fn some_msg(s: &str, sender_nick: &str, sender_info: &str, channel: &str, msg: &str) {
+    fn some_msg(s: &str, sender_nick: &str, sender_info: &str, channel: &str, txt: &str) {
         // Very ugly! :(
         match IrcMsg::new(s) {
             Some(irc_msg) => {
@@ -71,12 +71,12 @@ mod tests {
                         assert_eq!(x.sender_nick, sender_nick.to_string());
                         assert_eq!(x.sender_info, sender_info.to_string());
                         assert_eq!(x.channel, channel.to_string());
-                        assert_eq!(x.msg, msg.to_string());
+                        assert_eq!(x.txt, txt.to_string());
                     },
-                    None => fail!("Did not match {}", s),
+                    None => panic!("Did not match {}", s),
                 }
             }
-            None => fail!("Did not match {}", s),
+            None => panic!("Did not match {}", s),
         }
     }
 
@@ -85,7 +85,7 @@ mod tests {
         match IrcMsg::new(s) {
             Some(msg) => {
                 match IrcPrivMsg::new(&msg) {
-                    Some(_) => fail!("Matched {}, s"),
+                    Some(_) => panic!("Matched {}, s"),
                     None => (),
                 }
             }

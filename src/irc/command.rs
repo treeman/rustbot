@@ -78,7 +78,7 @@ mod tests {
                 assert_eq!(x.name, name);
                 assert_eq!(x.args, args);
             },
-            None => fail!("No match"),
+            None => panic!("No match"),
         }
     }
 }

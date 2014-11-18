@@ -72,13 +72,13 @@ mod tests {
                 assert_eq!(x.code, code.to_string());
                 assert_eq!(x.param, param.to_string());
             },
-            None => fail!("Did not match {}", s),
+            None => panic!("Did not match {}", s),
         }
     }
 
     fn none_msg(s: &str) {
         match super::IrcMsg::new(s) {
-            Some(_) => fail!("Matched {}, s"),
+            Some(_) => panic!("Matched {}, s"),
             None => (),
         }
     }

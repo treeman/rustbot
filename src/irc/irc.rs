@@ -103,7 +103,7 @@ impl<'a> Irc<'a> {
             loop {
                 match reader.read_line() {
                     Ok(x) => {
-                        tx.send(Received(x));
+                        tx.send(ConnectionEvent::Received(x));
                         if attempt > 0 {
                             println!("Attempt {} successful!", attempt);
                         }
@@ -147,13 +147,13 @@ impl<'a> Irc<'a> {
         // Quit is a special case to allow us to close the program.
         for x in conn.rx.iter() {
             match x {
-                Output(ref s) => {
+                ConnectionEvent::Output(ref s) => {
                     data.handle_write(s, &mut stream);
                 },
-                Received(ref s) => {
+                ConnectionEvent::Received(ref s) => {
                     data.handle_received(s, &writer);
                 },
-                Quit => {
+                ConnectionEvent::Quit => {
                     break;
                 },
             }

@@ -10,9 +10,9 @@ extern crate regex_macros;
 extern crate regex;
 extern crate serialize;
 extern crate getopts;
-
 extern crate core;
 extern crate time;
+extern crate timeedit;
 
 use std::os;
 use std::io;
@@ -58,11 +58,11 @@ fn main() {
     let usage = usage("Starts rustbot, an IRC bot written in rust.", opts);
 
     let mode = if matches.opt_present("help") {
-        Help
+        Mode::Help
     } else if matches.opt_present("version") {
-        Version
+        Mode::Version
     } else {
-        Run
+        Mode::Run
     };
 
     let config = match matches.opt_str("c") {
@@ -71,9 +71,9 @@ fn main() {
     };
 
     match mode {
-        Help => help(progname[], usage[]),
-        Version => version(),
-        Run => run(config)
+        Mode::Help => help(progname[], usage[]),
+        Mode::Version => version(),
+        Mode::Run => run(config)
     }
 }
 
@@ -103,6 +103,8 @@ fn run(config: String) {
     let mut irc = Irc::connect(conf);
 
     // TODO refactor callbacks etc...
+    // The problem lies with stack closures which must live until irc.run()
+    // so they need to be in the same function.
 
     // Make it so we can read commands from stdin.
     let writer = irc.writer();
@@ -160,9 +162,46 @@ fn run(config: String) {
         writer.msg(cmd.channel[], format!("I've been alive {}", format(dt))[]);
     });
 
+    // .schema gives us a schedule for liu
+    irc.register_cmd_cb("schema", |cmd: &IrcCommand, writer: &IrcWriter, _| {
+        let ans = find_schema(&cmd.args);
+        writer.msg(cmd.channel[], ans[]);
+    });
+
     irc.run();
 }
 
+fn find_schema(args: &Vec<&str>) -> String {
+    println!("args: `{}`", args);
+
+    let base = "https://se.timeedit.net/web/liu/db1/schema";
+
+    let s = util::join(args, " ");
+    let from = time::now();
+    let to = time::at(from.to_timespec() + Duration::weeks(1));
+
+    let types = timeedit::multi_search(s[], base);
+
+    let mut res = String::new();
+    if types.is_empty() {
+        return "So sorry, no match found.".to_string();
+    } else {
+        res.push_str("Schedule for: ");
+
+        let codes = util::join(&types.iter().map(|x| x.code[]).collect(), ", ");
+        res.push_str(codes[]);
+
+        let events = timeedit::schedule(types, from, to, base);
+        res.push_str(format!("\nFound {} events this week", events.len())[]);
+        res.push_str(format!("\nNext event: {}", events[0].fmt_full())[]);
+
+        // If there are things today, list them all
+        // Otherwise just print when the next is
+    }
+    res
+}
+
+// FIXME simplify...
 // 12 days 2 hours 3 minutes 48 seconds
 fn format(mut sec: i64) -> String {
     let mut min: i64 = sec / 60;
@@ -201,7 +240,7 @@ fn stdin_cmd(cmd: &Command, writer: &IrcWriter) -> StdinControl {
     match cmd.name {
         "quit" => {
             writer.quit("Gone for repairs");
-            return Quit;
+            return StdinControl::Quit;
         },
         "echo" => {
             let rest = cmd.args.connect(" ");
@@ -220,7 +259,7 @@ fn stdin_cmd(cmd: &Command, writer: &IrcWriter) -> StdinControl {
         },
         _ => (),
     }
-    Continue // Don't quit by default
+    StdinControl::Continue // Don't quit by default
 }
 
 // Read input from stdin.
@@ -234,7 +273,7 @@ fn stdin_reader(writer: IrcWriter) {
         match Command::new(x, CMD_PREFIX) {
             Some(cmd) => {
                 match stdin_cmd(&cmd, &writer) {
-                    Quit => break,
+                    StdinControl::Quit => break,
                     _ => (),
                 }
             },
