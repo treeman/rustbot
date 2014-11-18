@@ -164,6 +164,7 @@ fn run(config: String) {
 
     // .schema gives us a schedule for liu
     irc.register_cmd_cb("schema", |cmd: &IrcCommand, writer: &IrcWriter, _| {
+        // TODO pass ircwriter...
         let ans = find_schema(&cmd.args);
         writer.msg(cmd.channel[], ans[]);
     });
@@ -173,6 +174,9 @@ fn run(config: String) {
 
 fn find_schema(args: &Vec<&str>) -> String {
     println!("args: `{}`", args);
+
+    // Arguments:
+    // --tomorrow -t (list whole day tomorrow)
 
     let base = "https://se.timeedit.net/web/liu/db1/schema";
 
@@ -192,11 +196,25 @@ fn find_schema(args: &Vec<&str>) -> String {
         res.push_str(codes[]);
 
         let events = timeedit::schedule(types, from, to, base);
-        res.push_str(format!("\nFound {} events this week", events.len())[]);
-        res.push_str(format!("\nNext event: {}", events[0].fmt_full())[]);
+        //res.push_str(format!("\nFound {} events this week", events.len())[]);
+        //res.push_str(format!("\nNext event: {}", events[0].fmt_full())[]);
 
         // If there are things today, list them all
+        let today = timeedit::filter_today(events.clone());
+        if !today.is_empty() {
+            for event in today.iter() {
+                res.push_str(format!("\n{}", event.fmt_time_only())[]);
+            }
         // Otherwise just print when the next is
+        } else {
+            let events = timeedit::filter_upcoming(events);
+
+            if events.is_empty() {
+                res.push_str("\nYou're free!");
+            } else {
+                res.push_str(format!("\nNext: {}", events[0].fmt_pretty())[]);
+            }
+        }
     }
     res
 }
