@@ -8,9 +8,13 @@ Be aware that rust is fast changing and I may not keep the code up to date.
 TODO
 ====
 
+* Upload to pastebin when we have many lines output
+* Throttle messages being sent
+* Refactor irc writer to use Vec<&str> so it will not manually split on newlines (see schedule in main)
+* Refactor command hooks etc...
+
 * Logging
 * Auto-op in our channel
-* Upload to pastebin when we have many lines output
 * Move messages from String to &str
 * Autostart in screen
 
@@ -36,8 +40,6 @@ Implement some behaviour
 
 * Harder
     * .help [cmd]
-    * .lithcourse
-    * .lithschema
     * latest manga (or something)
     * habitrpg hooks?
 

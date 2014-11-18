@@ -175,9 +175,6 @@ fn run(config: String) {
 fn find_schema(args: &Vec<&str>) -> String {
     println!("args: `{}`", args);
 
-    // Arguments:
-    // --tomorrow -t (list whole day tomorrow)
-
     let base = "https://se.timeedit.net/web/liu/db1/schema";
 
     let s = util::join(args, " ");
@@ -196,8 +193,6 @@ fn find_schema(args: &Vec<&str>) -> String {
         res.push_str(codes[]);
 
         let events = timeedit::schedule(types, from, to, base);
-        //res.push_str(format!("\nFound {} events this week", events.len())[]);
-        //res.push_str(format!("\nNext event: {}", events[0].fmt_full())[]);
 
         // If there are things today, list them all
         let today = timeedit::filter_today(events.clone());
