@@ -24,7 +24,6 @@ Implement some behaviour
 * Medium
     * .imdb
     * .duke - Duke Nukem quotes
-    * .insult - Monkey Island insults!
     * auto op
     * Post notification when I post a new blogpost at jonashieta.se
     * Mention whenever I make a commit at github  
