@@ -11,6 +11,8 @@ use irc::writer::*;
 use irc::info::BotInfo;
 use irc::command::*;
 
+use irc::plugin::*;
+
 pub struct IrcData<'a> {
     // General config.
     pub info: BotInfo<'a>,
@@ -35,6 +37,8 @@ pub struct IrcData<'a> {
     // Workaround as I couldn't get Irc to hold a valid tx we can return.
     // The problem is what to do with the rx.
     pub spawn_funcs: Vec<fn(Sender<ConnectionEvent>)>,
+
+    pub plugins: Vec<Box<Plugin + 'a>>,
 }
 
 impl <'a> IrcData<'a> {
@@ -55,6 +59,8 @@ impl <'a> IrcData<'a> {
             privmsg_cb: Vec::new(),
             cmd_cb: HashMap::new(),
             spawn_funcs: Vec::new(),
+
+            plugins: Vec::new(),
         }
     }
 
@@ -131,6 +137,9 @@ impl <'a> IrcData<'a> {
                 for cb in cbs.iter_mut() {
                     (*cb)(cmd, writer, &self.info);
                 }
+            }
+            for plugin in self.plugins.iter_mut() {
+                plugin.cmd(cmd, writer, &self.info);
             }
         }
     }

@@ -4,6 +4,7 @@ use irc::privmsg::*;
 use util::*;
 
 // Command through irc.
+#[deriving(Show)]
 pub struct IrcCommand<'a> {
     pub name: &'a str,
     pub args: Vec<&'a str>,
@@ -32,6 +33,7 @@ impl<'a> IrcCommand<'a> {
 // Structured like.
 // .cmd arg1 arg2
 // Can be from irc or whatever.
+#[deriving(Show)]
 pub struct Command<'a> {
     pub name: &'a str,
     pub args: Vec<&'a str>,

@@ -1,4 +1,4 @@
-extern crate std;
+use std::{ str, io };
 
 // Split a string on whitespace, don't include empty strings
 pub fn space_split<'a>(s: &'a str) -> Vec<&'a str> {
@@ -24,7 +24,7 @@ pub fn newline_split<'a>(s: &'a str) -> Vec<&'a str> {
 // Run an external command and fetch it's output.
 // TODO maybe should not live here?
 pub fn run_external_cmd(cmd: &str, args: &[&str]) -> String {
-    let mut process = match std::io::process::Command::new(cmd).args(args).spawn() {
+    let mut process = match io::process::Command::new(cmd).args(args).spawn() {
         Ok(p) => p,
         Err(e) => panic!("Runtime error: {}", e),
     };
@@ -32,8 +32,7 @@ pub fn run_external_cmd(cmd: &str, args: &[&str]) -> String {
     let output = process.stdout.as_mut().unwrap().read_to_end();
     match output {
         Ok(x) => {
-            // Hilarious :)
-            std::str::from_utf8(x[]).unwrap().to_string()
+            str::from_utf8(x[]).unwrap().to_string()
         },
         Err(e) => panic!("Read error: {}", e),
     }
@@ -52,9 +51,24 @@ pub fn join(xs: &Vec<&str>, between: &str) -> String {
     return res;
 }
 
-#[test]
-fn test_join() {
-    assert_eq!(join(&vec!["a", "b", "c"], ", "),
-        "a, b, c".to_string());
+pub fn join_strings(xs: &Vec<String>, between: &str) -> String {
+    let mut res = String::new();
+    for x in xs.iter() {
+        if !res.is_empty() {
+            res.push_str(between);
+        }
+        res.push_str(x[]);
+    }
+    return res;
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_join() {
+        assert_eq!(join(&vec!["a", "b", "c"], ", "),
+            "a, b, c".to_string());
+    }
+}

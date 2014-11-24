@@ -15,8 +15,7 @@ extern crate time;
 extern crate timeedit;
 
 use std::os;
-use std::io;
-use std::io::Timer;
+use std::io::{ mod, Timer };
 use std::time::Duration;
 use regex::Regex;
 
@@ -27,16 +26,12 @@ use getopts::{
     usage
 };
 
-use irc::Irc;
-use irc::info::*;
-use irc::msg::*;
-use irc::privmsg::*;
-use irc::config::{IrcConfig, JsonConfig};
-use irc::writer::IrcWriter;
-use irc::command::{Command, IrcCommand};
+use irc::*;
 
 mod irc;
 mod util;
+mod plugins;
+mod stdin;
 
 static CMD_PREFIX: char = '.';
 
@@ -57,24 +52,18 @@ fn main() {
     let progname = args[0].clone();
     let usage = usage("Starts rustbot, an IRC bot written in rust.", &opts);
 
-    let mode = if matches.opt_present("help") {
-        Mode::Help
-    } else if matches.opt_present("version") {
-        Mode::Version
-    } else {
-        Mode::Run
-    };
-
     let config = match matches.opt_str("c") {
         Some(c) => c,
         None => "config.json".to_string()
     };
 
-    match mode {
-        Mode::Help => help(progname[], usage[]),
-        Mode::Version => version(),
-        Mode::Run => run(config)
-    }
+    if matches.opt_present("help") {
+        help(progname[], usage[])
+    } else if matches.opt_present("version") {
+        version()
+    } else {
+        run(config)
+    };
 }
 
 fn run(config: String) {
@@ -109,9 +98,10 @@ fn run(config: String) {
     // Make it so we can read commands from stdin.
     let writer = irc.writer();
     spawn(proc() {
-        stdin_reader(writer);
+        stdin::reader(writer);
     });
 
+    // Spawn a periodically called function
     let writer = irc.writer();
     spawn(proc() {
         reminder(writer);
@@ -154,146 +144,10 @@ fn run(config: String) {
     // External scripts
     register_external!(irc, "nextep", "nextep", "--short");
 
-    // .uptime return the runtime of our bot
-    let start = time::now();
-    irc.register_cmd_cb("uptime", |cmd: &IrcCommand, writer: &IrcWriter, _| {
-        let at = time::now();
-        let dt = at.to_timespec().sec - start.to_timespec().sec;
-        writer.msg(cmd.channel[], format!("I've been alive {}", format(dt))[]);
-    });
-
-    // .schema gives us a schedule for liu
-    irc.register_cmd_cb("schema", |cmd: &IrcCommand, writer: &IrcWriter, _| {
-        // TODO pass ircwriter...
-        let ans = find_schema(&cmd.args);
-        writer.msg(cmd.channel[], ans[]);
-    });
+    // Register some heavier plugins
+    plugins::register(&mut irc);
 
     irc.run();
-}
-
-fn find_schema(args: &Vec<&str>) -> String {
-    println!("args: `{}`", args);
-
-    let base = "https://se.timeedit.net/web/liu/db1/schema";
-
-    let s = util::join(args, " ");
-    let from = time::now();
-    let to = time::at(from.to_timespec() + Duration::weeks(1));
-
-    let types = timeedit::multi_search(s[], base);
-
-    let mut res = String::new();
-    if types.is_empty() {
-        return "So sorry, no match found.".to_string();
-    } else {
-        res.push_str("Schedule for: ");
-
-        let codes = util::join(&types.iter().map(|x| x.code[]).collect(), ", ");
-        res.push_str(codes[]);
-
-        let events = timeedit::schedule(types, from, to, base);
-
-        // If there are things today, list them all
-        let today = timeedit::filter_upcoming(timeedit::filter_today(events.clone()));
-        if !today.is_empty() {
-            for event in today.iter() {
-                res.push_str(format!("\n{}", event.fmt_time_only())[]);
-            }
-        // Otherwise just print when the next is
-        } else {
-            let events = timeedit::filter_upcoming(events);
-
-            if events.is_empty() {
-                res.push_str("\nYou're free!");
-            } else {
-                res.push_str(format!("\nNext: {}", events[0].fmt_pretty())[]);
-            }
-        }
-    }
-    res
-}
-
-// FIXME simplify...
-// 12 days 2 hours 3 minutes 48 seconds
-fn format(mut sec: i64) -> String {
-    let mut min: i64 = sec / 60;
-    let mut hours: i64 = min / 60;
-    let days: i64 = hours / 24;
-
-    if sec > 0 {
-        sec = sec - min * 60;
-    }
-    if hours > 0 {
-        min = min - hours * 60;
-    }
-    if days > 0 {
-        hours = hours - days * 24;
-    }
-
-    if days > 0 {
-        format!("{} days {} hours {} minutes {} seconds", days, hours, min, sec)
-    } else if hours > 0 {
-        format!("{} hours {} minutes {} seconds", hours, min, sec)
-    } else if min > 0 {
-        format!("{} minutes {} seconds", min, sec)
-    } else {
-        format!("{} seconds", sec)
-    }
-}
-
-// If we shall continue the stdin loop or not.
-enum StdinControl {
-    Quit,
-    Continue
-}
-
-// We can do some rudimentary things from the commandline.
-fn stdin_cmd(cmd: &Command, writer: &IrcWriter) -> StdinControl {
-    match cmd.name {
-        "quit" => {
-            writer.quit("Gone for repairs");
-            return StdinControl::Quit;
-        },
-        "echo" => {
-            let rest = cmd.args.connect(" ");
-            writer.output(rest);
-        },
-        "say" => {
-            if cmd.args.len() > 1 {
-                let chan = cmd.args[0];
-                let rest = cmd.args.slice_from(1).connect(" ");
-                writer.msg(chan, rest[]);
-            }
-            else {
-                // <receiver> can be either a channel or a user nick
-                println!("Usage: .say <receiver> text to send");
-            }
-        },
-        _ => (),
-    }
-    StdinControl::Continue // Don't quit by default
-}
-
-// Read input from stdin.
-fn stdin_reader(writer: IrcWriter) {
-    println!("Spawning stdin reader");
-    for line in io::stdin().lines() {
-        // FIXME prettier...
-        let s : String = line.unwrap();
-        let x = s[].trim();
-
-        match Command::new(x, CMD_PREFIX) {
-            Some(cmd) => {
-                match stdin_cmd(&cmd, &writer) {
-                    StdinControl::Quit => break,
-                    _ => (),
-                }
-            },
-            None => (),
-        }
-    }
-    println!("Quitting stdin reader");
 }
 
 fn help(progname: &str, usage: &str) {
@@ -304,12 +158,6 @@ fn help(progname: &str, usage: &str) {
 // FIXME Load version from Cargo.toml
 fn version() {
     println!("rustbot 0.0.1");
-}
-
-enum Mode {
-    Help,
-    Version,
-    Run
 }
 
 // Send a friendly reminder!
