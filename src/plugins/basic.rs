@@ -74,11 +74,11 @@ mod tests {
 
     #[test]
     fn test_format() {
-        assert_eq!(format(0)[], "0 seconds");
-        assert_eq!(format(1)[], "1 second");
-        assert_eq!(format(2)[], "2 seconds");
-        assert_eq!(format(93)[], "1 minute 33 seconds");
-        assert_eq!(format(3145400)[], "36 days 9 hours 43 minutes 20 seconds");
+        assert_eq!(format_duration(0)[], "0 seconds");
+        assert_eq!(format_duration(1)[], "1 second");
+        assert_eq!(format_duration(2)[], "2 seconds");
+        assert_eq!(format_duration(93)[], "1 minute 33 seconds");
+        assert_eq!(format_duration(3145400)[], "36 days 9 hours 43 minutes 20 seconds");
     }
 }
 

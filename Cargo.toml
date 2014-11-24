@@ -12,3 +12,6 @@ git = "https://github.com/rust-lang/time"
 
 git = "https://github.com/treeman/libtimeedit"
 
+[dependencies.mi_insults]
+
+git = "https://github.com/treeman/mi_insults"

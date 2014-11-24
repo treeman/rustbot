@@ -2,6 +2,7 @@
 #![feature(globs)]
 #![feature(macro_rules)]
 #![feature(slicing_syntax)]
+#![feature(if_let)]
 
 // For regex usage
 #![feature(phase)]

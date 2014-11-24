@@ -1,15 +1,14 @@
-use irc::{ IrcWriter, IrcCommand, BotInfo };
+use irc::{ IrcWriter, IrcCommand, BotInfo, IrcPrivMsg };
 
 pub trait Plugin {
-    // list of cmds the plugin listens to
+    // TODO
+    // * list of cmds the plugin listens to
+    // * help for all cmds
+    // * raw hooks
+    // * irc code hooks
 
-    //pub fn privmsg(msg: &IrcPrivMsg, writer: &IrcWriter, info: &BotInfo) {
-    fn privmsg(&mut self) {
-        println!("Plugin::privmsg");
-    }
+    fn privmsg(&mut self, _msg: &IrcPrivMsg, _writer: &IrcWriter, _info: &BotInfo);
 
-    fn cmd(&mut self, _cmd: &IrcCommand, _writer: &IrcWriter, _info: &BotInfo) {
-        println!("Plugin::cmd");
-    }
+    fn cmd(&mut self, _cmd: &IrcCommand, _writer: &IrcWriter, _info: &BotInfo);
 }
 

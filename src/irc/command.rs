@@ -10,6 +10,7 @@ pub struct IrcCommand<'a> {
     pub args: Vec<&'a str>,
     //pub msg: &'a IrcPrivMsg,
     pub channel: &'a str,
+    // TODO arg string, everything else a string
 }
 
 // TODO something like this?

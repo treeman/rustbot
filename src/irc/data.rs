@@ -105,6 +105,9 @@ impl <'a> IrcData<'a> {
         for cb in self.privmsg_cb.iter_mut() {
             (*cb)(msg, writer, &self.info);
         }
+        for plugin in self.plugins.iter_mut() {
+            plugin.privmsg(msg, writer, &self.info);
+        }
     }
 
     /// Called when we receive a command from irc.
