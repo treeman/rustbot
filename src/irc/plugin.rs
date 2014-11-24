@@ -7,8 +7,8 @@ pub trait Plugin {
     // * raw hooks
     // * irc code hooks
 
-    fn privmsg(&mut self, _msg: &IrcPrivMsg, _writer: &IrcWriter, _info: &BotInfo);
+    fn privmsg(&mut self, _msg: &IrcPrivMsg, _writer: &IrcWriter, _info: &BotInfo) { }
 
-    fn cmd(&mut self, _cmd: &IrcCommand, _writer: &IrcWriter, _info: &BotInfo);
+    fn cmd(&mut self, _cmd: &IrcCommand, _writer: &IrcWriter, _info: &BotInfo) { }
 }
 
