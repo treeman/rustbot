@@ -49,13 +49,13 @@ fn main() {
         optflag("h", "help", "display this help and exit")
     ];
 
-    let matches = match getopts(args.tail(), opts) {
+    let matches = match getopts(args.tail(), &opts) {
         Ok(m) => m,
         Err(e) => panic!("{}", e)
     };
 
     let progname = args[0].clone();
-    let usage = usage("Starts rustbot, an IRC bot written in rust.", opts);
+    let usage = usage("Starts rustbot, an IRC bot written in rust.", &opts);
 
     let mode = if matches.opt_present("help") {
         Mode::Help
@@ -195,7 +195,7 @@ fn find_schema(args: &Vec<&str>) -> String {
         let events = timeedit::schedule(types, from, to, base);
 
         // If there are things today, list them all
-        let today = timeedit::filter_today(events.clone());
+        let today = timeedit::filter_upcoming(timeedit::filter_today(events.clone()));
         if !today.is_empty() {
             for event in today.iter() {
                 res.push_str(format!("\n{}", event.fmt_time_only())[]);
@@ -297,7 +297,7 @@ fn stdin_reader(writer: IrcWriter) {
 }
 
 fn help(progname: &str, usage: &str) {
-    println!("Usage: {:s} [OPTION]", progname);
+    println!("Usage: {} [OPTION]", progname);
     io::stdio::println(usage);
 }
 

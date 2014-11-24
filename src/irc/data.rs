@@ -112,7 +112,7 @@ impl <'a> IrcData<'a> {
             let mut cmds: Vec<&str> = self.cmd_cb.keys().map(|x| x[]).collect();
 
             // Manually add hardcoded commands.
-            cmds.push_all(["cmds"]);
+            cmds.push_all(&["cmds"]);
             cmds.sort();
 
             // Should be a join somewhere here right?

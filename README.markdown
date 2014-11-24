@@ -22,10 +22,10 @@ Implement some behaviour
 -----------------------
 
 * Medium
-    * .cmds
-    * auto op
+    * .imdb
     * .duke - Duke Nukem quotes
     * .insult - Monkey Island insults!
+    * auto op
     * Post notification when I post a new blogpost at jonashieta.se
     * Mention whenever I make a commit at github  
         `curl -i https://api.github.com/users/treeman/events/public`
